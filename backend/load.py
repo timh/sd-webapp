@@ -21,6 +21,11 @@ def list_models() -> Iterable[Model]:
         if not subdir.is_dir():
             continue
 
+        contents = [path for path in subdir.iterdir() 
+                    if path.name == "model_index.json" or path.name.startswith("checkpoint-")]
+        if len(contents) == 0:
+            continue
+
         modelStr = subdir.name
         modelName = subdir.name
         modelBase = ""
@@ -69,11 +74,15 @@ def list_models() -> Iterable[Model]:
         for checkpoint in subdir.iterdir():
             if not checkpoint.is_dir() or not checkpoint.name.startswith("checkpoint-"):
                 continue
+            if not checkpoint.joinpath("model-index.json").exists():
+                continue
 
             modelSteps = int(checkpoint.name.replace("checkpoint-", ""))
             submodel.modelSteps.append(modelSteps)
         
         if len(submodel.modelSteps) == 0:
             submodel.modelSteps.append(0)
+        
+        submodel.modelSteps = sorted(submodel.modelSteps)
 
     return sorted(list(res.values()), key=lambda model: model.modelName)
