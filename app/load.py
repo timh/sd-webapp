@@ -74,9 +74,9 @@ def list_models() -> Iterable[Model]:
         for checkpoint in subdir.iterdir():
             if not checkpoint.is_dir() or not checkpoint.name.startswith("checkpoint-"):
                 continue
-            if not checkpoint.joinpath("model-index.json").exists():
+            if not checkpoint.joinpath("model_index.json").exists():
                 continue
-
+        
             modelSteps = int(checkpoint.name.replace("checkpoint-", ""))
             submodel.modelSteps.append(modelSteps)
         

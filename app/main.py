@@ -4,10 +4,6 @@ import load
 
 app = Flask(__name__)
 
-@app.route('/')
-def hello_world():
-    return 'Hello, World!'
-
 @app.route('/models')
 def list_models():
     models = load.list_models()
