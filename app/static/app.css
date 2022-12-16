@@ -1,0 +1,69 @@
+#chooser {
+    display: grid;
+    grid-template-columns: max-content;
+    width: max-content;
+}
+
+#chooser span {
+    width: max-content;
+    border-radius: 5px;
+    margin-top: 2px;
+    margin-bottom: -1px;
+    margin-right: 1px;
+    padding-left: 2px;
+    padding-right: 2px;
+    padding-top: 3px;
+    padding-bottom: 1px;
+    text-align: center;
+    background-color: green;
+    /* text-align: right; */
+}
+
+#chooser .deselected {
+    background-color: gray;
+}
+
+#chooser .submodelSteps {
+    background: none;
+}
+
+.modelName { /* modelName */
+    grid-column: 1;
+}
+.modelBase { /* modelName */
+    grid-column: 2;
+    display: none;
+}
+.modelExtras {
+    grid-column: 3;
+}
+
+.modelStr {
+    grid-column: 4;
+    display: none;
+}
+
+.modelSeed {
+    grid-column: 5;
+    display: none;
+}
+
+.modelBatch {
+    grid-column: 6;
+}
+
+.modelLR {
+    grid-column: 7;
+}
+
+.submodelSteps {
+    grid-column: 8;
+}
+
+.submodelSteps .stepChoice {
+    margin: 2px;
+}
+
+#chooser .header {
+    background: none;
+}

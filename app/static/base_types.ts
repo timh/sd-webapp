@@ -2,10 +2,12 @@
 class SubModel {
     modelStr: string
     modelSeed: number
+    modelStepsVisible: Map<number, boolean>
     modelSteps: Array<number>
     modelBatch: number
     modelLR: string
     modelExtras: Set<string>
+    visible: boolean
 
     constructor(modelStr: string = "", modelSeed: number = 0, modelBatch: number = 1,
                  modelLR: string = "", modelSteps: Array<number> = [],
@@ -16,6 +18,11 @@ class SubModel {
         this.modelLR = modelLR
         this.modelExtras = modelExtras
         this.modelSteps = modelSteps.sort()
+        this.modelStepsVisible = new Map()
+        for (const steps of this.modelSteps) {
+            this.modelStepsVisible.set(steps, true)
+        }
+        this.visible = true
     }
 
     static from_json(input: any): SubModel {
@@ -26,6 +33,9 @@ class SubModel {
         res.modelLR = input.modelLR
         res.modelExtras = new Set(input.modelExtras)
         res.modelSteps = input.modelSteps
+        for (const steps of res.modelSteps) {
+            res.modelStepsVisible.set(steps, true)
+        }
         return res
     }
 }
@@ -34,11 +44,13 @@ class Model {
     modelName: string
     modelBase: string
     submodels: Array<SubModel>
+    visible: boolean
 
     constructor(modelName: string = "", modelBase: string = "") {
         this.modelName = modelName
         this.modelBase = modelBase
         this.submodels = new Array()
+        this.visible = true
     }
 
     static from_json(input: any): Model {

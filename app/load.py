@@ -22,7 +22,7 @@ def list_models() -> Iterable[Model]:
             continue
 
         contents = [path for path in subdir.iterdir() 
-                    if path.name == "model_index.json" or path.name.startswith("checkpoint-")]
+                    if path.name == "model_index.json" or path.joinpath("model_index.json").exists()]
         if len(contents) == 0:
             continue
 
@@ -43,6 +43,9 @@ def list_models() -> Iterable[Model]:
         if "-f222v" in modelName:
             modelName = modelName.replace("-f222v", "")
             modelBase = "f222v"
+        if "-sd15" in modelName:
+            modelName = modelName.replace("-sd15", "")
+            modelBase = "sd15"
         if "-cap" in modelName:
             modelName = modelName.replace("-cap", "")
             modelExtras.add("cap")
@@ -72,12 +75,12 @@ def list_models() -> Iterable[Model]:
         model.submodels.append(submodel)
 
         for checkpoint in subdir.iterdir():
-            if not checkpoint.is_dir() or not checkpoint.name.startswith("checkpoint-"):
+            if not checkpoint.is_dir():
                 continue
             if not checkpoint.joinpath("model_index.json").exists():
                 continue
         
-            modelSteps = int(checkpoint.name.replace("checkpoint-", ""))
+            modelSteps = int(checkpoint.name.replace("checkpoint-", "").replace("save-", ""))
             submodel.modelSteps.append(modelSteps)
         
         if len(submodel.modelSteps) == 0:
@@ -85,4 +88,6 @@ def list_models() -> Iterable[Model]:
         
         submodel.modelSteps = sorted(submodel.modelSteps)
 
+    for model in res.values():
+        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.modelBatch, submodel.modelLR, submodel.modelSeed])
     return sorted(list(res.values()), key=lambda model: model.modelName)
