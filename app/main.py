@@ -25,5 +25,5 @@ def list_imagesets():
 
     res = [imageset.to_dict() for imageset in load.list_imagesets()]
     res = json.dumps(res, indent=2)
-    print(res)
+    # print(res)
     return res

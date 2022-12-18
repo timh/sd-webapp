@@ -103,18 +103,19 @@ def list_imagesets() -> Iterable[ImageSet]:
         modelName = name_parts[0]
         modelBase = name_parts[1] if len(name_parts) > 1 else ""
 
-        model = Model(modelName, modelBase)
-        res.append(model)
+        print(f"model_dir {model_dir}, modelName {modelName}, modelBase {modelBase}")
 
+        submodels: List[SubModel] = []
         for submodel_dir in subdirs(model_dir):
             modelBatch = 0
             modelLR = 1.0
             modelSeed = 0
 
             kv_pairs = submodel_dir.name.split(",")
+            print(f"  - submodel_dir {submodel_dir}, kv_pairs {kv_pairs}")
             for kv_pair in kv_pairs:
                 if not "=" in kv_pair:
-                    print(f"not a k/v pair {kv_pair}: submodel_dir = {submodel_dir}")
+                    print(f"    not a k/v pair {kv_pair}: submodel_dir = {submodel_dir}")
                     continue
                 key, val = kv_pair.split("=")
                 if key == "batch":
@@ -128,12 +129,26 @@ def list_imagesets() -> Iterable[ImageSet]:
 
             modelSteps = []
             for steps_dir in subdirs(submodel_dir):
+                print(f"    - steps_dir {steps_dir}")
                 steps = steps_dir.name.replace("steps=", "")
                 if not all([c.isdecimal() for c in steps]):
                     continue
                 steps = int(steps)
                 modelSteps.append(steps)
-            
+
+            if len(modelSteps) == 0:
+                print(f"    * no steps directories, skipping submodel")
+                continue
+
             submodel = SubModel(modelSeed=modelSeed, modelBatch=modelBatch, modelLR=modelLR, modelSteps=modelSteps)
-            model.submodels.append(submodel)
+            submodels.append(submodel)
+
+        if len(submodels) == 0:
+            print(f"  * no submodels, skipping model")
+            continue
+
+        model = Model(modelName, modelBase)
+        res.append(model)
+        model.submodels.extend([submodels])
+        
     return res
