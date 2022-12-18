@@ -2,9 +2,10 @@ from typing import Iterable, List, Set, Dict
 from pathlib import Path
 import re
 
-from base_types import SubModel, Model
+from base_types import SubModel, Model, ImageSet
 
-DIR = Path("/home/tim/models")
+MODEL_DIR = Path("/home/tim/models")
+IMAGE_DIR = Path("/home/tim/devel/outputs/app-images")
 
 # alex22-f222v-batch1@1.0_r0
 # alex22-f222v-batch2-cap-bf16@4.0_r0
@@ -17,7 +18,7 @@ RE_BATCH = re.compile(r"(.+)-batch(\d+)(.*)")
 def list_models() -> Iterable[Model]:
     res: Dict[str, Model] = dict()
 
-    for subdir in DIR.iterdir():
+    for subdir in MODEL_DIR.iterdir():
         if not subdir.is_dir():
             continue
 
@@ -91,3 +92,48 @@ def list_models() -> Iterable[Model]:
     for model in res.values():
         model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.modelBatch, submodel.modelLR, submodel.modelSeed])
     return sorted(list(res.values()), key=lambda model: model.modelName)
+
+def list_imagesets() -> Iterable[ImageSet]:
+    def subdirs(path: Path) -> List[Path]:
+        return [item for item in path.iterdir() if item.is_dir()]
+
+    res: List[Model] = list()
+    for model_dir in subdirs(MODEL_DIR):
+        name_parts = model_dir.name.split("+")
+        modelName = name_parts[0]
+        modelBase = name_parts[1] if len(name_parts) > 1 else ""
+
+        model = Model(modelName, modelBase)
+        res.append(model)
+
+        for submodel_dir in subdirs(model_dir):
+            modelBatch = 0
+            modelLR = 1.0
+            modelSeed = 0
+
+            kv_pairs = submodel_dir.name.split(",")
+            for kv_pair in kv_pairs:
+                if not "=" in kv_pair:
+                    print(f"not a k/v pair {kv_pair}: submodel_dir = {submodel_dir}")
+                    continue
+                key, val = kv_pair.split("=")
+                if key == "batch":
+                    modelBatch = int(val)
+                elif key == "LR":
+                    modelLR = val
+                elif key == "seed":
+                    modelSeed = int(val)
+                else:
+                    raise ValueError(f"submodel_dir.name = {submodel_dir.name}; don't know how to parse key = {key}, val = '{val}'")
+
+            modelSteps = []
+            for steps_dir in subdirs(submodel_dir):
+                steps = steps_dir.name.replace("steps=", "")
+                if not all([c.isdecimal() for c in steps]):
+                    continue
+                steps = int(steps)
+                modelSteps.append(steps)
+            
+            submodel = SubModel(modelSeed=modelSeed, modelBatch=modelBatch, modelLR=modelLR, modelSteps=modelSteps)
+            model.submodels.append(submodel)
+    return res

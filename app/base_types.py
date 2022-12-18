@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Iterable, Dict, Set, List
 import inspect
 
@@ -16,6 +17,9 @@ class BaseModel:
                 value = list(value)
             if isinstance(value, Iterable) and len(value) > 0 and isinstance(value[0], BaseModel):
                 value = [child.to_dict() for child in value]
+            if not isinstance(value, list) and not isinstance(value, str) and not isinstance(value, int) and not isinstance(value, float):
+                print(f"skip attribute {attr} value {value}")
+                continue
             res[attr] = value
         return res
 
@@ -44,7 +48,31 @@ class Model(BaseModel):
         self.modelName = modelName
         self.modelBase = modelBase
         self.submodels = list()
-    
+
+class ImageSet(BaseModel):
+    model: Model
+    submodel: SubModel
+    steps: int
+    prompt: str
+    seeds: Set[int]
+
+    def __init__(self, model: Model, submodel: SubModel, steps: int, prompt: str, seeds: Iterable[int] = []):
+        self.model = model
+        self.submodel = submodel
+        self.steps = steps
+        self.prompt = prompt
+        self.seeds = set([seeds])
+
+    @property
+    def relpath(self, seed: int) -> Path:
+        model_str = self.model.modelName
+        if self.model.modelBase:
+            model_str += f"+{self.model.modelBase}"
+        submodel_str = f"batch={self.submodel.modelBatch},LR={self.submodel.modelLR},seed={self.submodel.modelSeed}"
+        steps_str = f"steps={self.steps}"
+        png = f"{seed:010}.png"
+        return Path(self.model.modelName, submodel_str, steps_str, self.prompt, png)
+
 if __name__ == "__main__":
     m = Model(modelStr="foo")
     d = m.to_dict()
