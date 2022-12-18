@@ -98,7 +98,7 @@ def list_imagesets() -> Iterable[ImageSet]:
         return [item for item in path.iterdir() if item.is_dir()]
 
     res: List[Model] = list()
-    for model_dir in subdirs(MODEL_DIR):
+    for model_dir in subdirs(IMAGE_DIR):
         name_parts = model_dir.name.split("+")
         modelName = name_parts[0]
         modelBase = name_parts[1] if len(name_parts) > 1 else ""

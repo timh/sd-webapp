@@ -49,29 +49,43 @@ class Model(BaseModel):
         self.modelBase = modelBase
         self.submodels = list()
 
+class ImageSet: pass
+class Image:
+    imageset: ImageSet
+    seed: int
+
+    def __init__(self, imageset: ImageSet, seed: int):
+        self.imageset = imageset
+        self.seed = seed
+
+    def relpath(self) -> Path:
+        png = f"{self.seed:010}.png"
+        return self.imageset.relpath().joinpath(png)
+
 class ImageSet(BaseModel):
     model: Model
     submodel: SubModel
     steps: int
     prompt: str
-    seeds: Set[int]
+    images: List[Image]
 
     def __init__(self, model: Model, submodel: SubModel, steps: int, prompt: str, seeds: Iterable[int] = []):
         self.model = model
         self.submodel = submodel
         self.steps = steps
         self.prompt = prompt
-        self.seeds = set([seeds])
 
-    @property
-    def relpath(self, seed: int) -> Path:
+        self.seeds = list()
+        for seed in seeds:
+            self.seeds.append(Image(self, seed))
+
+    def relpath(self) -> Path:
         model_str = self.model.modelName
         if self.model.modelBase:
             model_str += f"+{self.model.modelBase}"
         submodel_str = f"batch={self.submodel.modelBatch},LR={self.submodel.modelLR},seed={self.submodel.modelSeed}"
         steps_str = f"steps={self.steps}"
-        png = f"{seed:010}.png"
-        return Path(self.model.modelName, submodel_str, steps_str, self.prompt, png)
+        return Path(self.model.modelName, submodel_str, steps_str, self.prompt)
 
 if __name__ == "__main__":
     m = Model(modelStr="foo")
