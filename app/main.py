@@ -10,8 +10,8 @@ from base_types import BaseModel, Model, ImageSet
 app = Flask(__name__)
 
 config = {
-    "DEBUG": True,          # some Flask specific configs
-    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "DEBUG": True,
+    "CACHE_TYPE": "SimpleCache",
     "CACHE_DEFAULT_TIMEOUT": 30
 }
 app = Flask(__name__)

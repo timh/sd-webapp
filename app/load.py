@@ -2,7 +2,7 @@ from typing import Iterable, List, Set, Dict
 from pathlib import Path
 import re
 
-from base_types import SubModel, Model, ImageSet
+from base_types import SubModelSteps, SubModel, Model, ImageSet
 
 MODEL_DIR = Path("/home/tim/models")
 IMAGE_DIR = Path("/home/tim/devel/outputs/app-images")
@@ -63,14 +63,14 @@ def list_models() -> Iterable[Model]:
         if modelName in res:
             model = res[modelName]
         else:
-            model = Model(modelName=modelName, modelBase=modelBase)
+            model = Model(name=modelName, base=modelBase)
             res[modelName] = model
 
         submodel_args = {
-            'modelStr': modelStr, 
-            'modelSeed': modelSeed,
-            'modelBatch': modelBatch, 'modelLR': modelLR,
-            'modelExtras': modelExtras
+            'submodelStr': modelStr, 
+            'seed': modelSeed,
+            'batch': modelBatch, 'learningRate': modelLR,
+            'extras': modelExtras
         }
         submodel = SubModel(**submodel_args)
         model.submodels.append(submodel)
@@ -81,17 +81,18 @@ def list_models() -> Iterable[Model]:
             if not checkpoint.joinpath("model_index.json").exists():
                 continue
         
-            modelSteps = int(checkpoint.name.replace("checkpoint-", "").replace("save-", ""))
-            submodel.modelSteps.append(modelSteps)
+            steps_int = int(checkpoint.name.replace("checkpoint-", "").replace("save-", ""))
+            steps_obj = SubModelSteps(steps_int)
+            submodel.submodelSteps.append(steps_obj)
         
-        if len(submodel.modelSteps) == 0:
-            submodel.modelSteps.append(0)
+        if len(submodel.submodelSteps) == 0:
+            submodel.submodelSteps.append(SubModelSteps(0))
         
-        submodel.modelSteps = sorted(submodel.modelSteps)
+        submodel.submodelSteps = sorted(submodel.submodelSteps, key=lambda s: s.steps)
 
     for model in res.values():
-        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.modelBatch, submodel.modelLR, submodel.modelSeed])
-    return sorted(list(res.values()), key=lambda model: model.modelName)
+        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.batch, submodel.learningRate, submodel.seed])
+    return sorted(list(res.values()), key=lambda model: model.name)
 
 def list_imagesets() -> Iterable[ImageSet]:
     def subdirs(path: Path) -> List[Path]:
@@ -112,7 +113,7 @@ def list_imagesets() -> Iterable[ImageSet]:
             modelSeed = 0
 
             kv_pairs = submodel_dir.name.split(",")
-            print(f"  - submodel_dir {submodel_dir}, kv_pairs {kv_pairs}")
+            print(f"  - submodel_dir {submodel_dir.name}, kv_pairs {kv_pairs}")
             for kv_pair in kv_pairs:
                 if not "=" in kv_pair:
                     print(f"    not a k/v pair {kv_pair}: submodel_dir = {submodel_dir}")
@@ -140,7 +141,7 @@ def list_imagesets() -> Iterable[ImageSet]:
                 print(f"    * no steps directories, skipping submodel")
                 continue
 
-            submodel = SubModel(modelSeed=modelSeed, modelBatch=modelBatch, modelLR=modelLR, modelSteps=modelSteps)
+            submodel = SubModel(seed=modelSeed, vatch=modelBatch, learningRate=modelLR)
             submodels.append(submodel)
 
         if len(submodels) == 0:
