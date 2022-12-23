@@ -81,3 +81,21 @@
     width: 128px;
     height: 128px;
 }
+
+#images .image .details {
+    position: absolute;
+    visibility: hidden;
+    width: min-content;
+    height: max-content;
+
+    background-color: black;
+    color: white;
+    text-shadow: black 1px 1px;
+
+    margin-top: 64px;
+    margin-left: -64px;
+}
+
+#images .image:hover .details  {
+    visibility: visible;
+}

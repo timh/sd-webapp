@@ -125,7 +125,7 @@ function renderImages(elementId: string, models: Array<Model>, rootElem: HTMLEle
     const isetKey2Images = new Map<string, Array<Image>>()
     for (const stepsPath of sort(allSubmodelStepsVisible.keys())) {
         const oneSteps = allSubmodelStepsVisible.get(stepsPath)!
-        if (!oneSteps.visible) {
+        if (!oneSteps.visible || !oneSteps.submodel.visible || !oneSteps.submodel.model.visible) {
             continue
         }
 
@@ -154,10 +154,15 @@ function renderImages(elementId: string, models: Array<Model>, rootElem: HTMLEle
         }
         else {
             for (const image of images) {
+                const imageSrc = "/image?path=" + encodeURIComponent(image.path)
                 const spanElem = imagesElem.appendChild(createElement("span", {class: "image"}))
-                const imgElem = spanElem.appendChild(createElement("img", {class: "thumbnail"})) as HTMLImageElement
-                const image_path = image.path
-                imgElem.src = "/image?path=" + encodeURIComponent(image_path)
+                const thumbElem = spanElem.appendChild(createElement("img", {class: "thumbnail"})) as HTMLImageElement
+                thumbElem.src = imageSrc
+
+                const detailsElem = spanElem.appendChild(createElement("span", {class: "details"}))
+                detailsElem.appendChild(createElement("div", {class: "attributes"}, image.path))
+                const fullsizeElem = detailsElem.appendChild(createElement("img", {class: "fullsize"})) as HTMLImageElement
+                fullsizeElem.src = imageSrc
             }
         }
 

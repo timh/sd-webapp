@@ -1,14 +1,16 @@
 class Image {
     seed: number
     path: string
+    imageset: ImageSet
 
-    constructor(seed: number, path: string) {
+    constructor(imageset: ImageSet, seed: number, path: string) {
+        this.imageset = imageset
         this.seed = seed
         this.path = path
     }
 
-    static from_json(input: any): Image {
-        return new Image(input.seed, input.path)
+    static from_json(imageset: ImageSet, input: any): Image {
+        return new Image(imageset, input.seed, input.path)
     }
 }
 
@@ -21,7 +23,10 @@ class ImageSet {
     images: Array<Image>
     visible: boolean
 
-    constructor(prompt: string, samplerStr: string, cfg: number, path: string, key: string) {
+    submodelSteps: SubModelSteps
+
+    constructor(submodelSteps: SubModelSteps, prompt: string, samplerStr: string, cfg: number, path: string, key: string) {
+        this.submodelSteps = submodelSteps
         this.prompt = prompt
         this.samplerStr = samplerStr
         this.cfg = cfg
@@ -31,10 +36,10 @@ class ImageSet {
         this.visible = false
     }
 
-    static from_json(input: any): ImageSet {
-        const res = new ImageSet(input.prompt, input.samplerStr, input.cfg, input.path, input.key)
+    static from_json(submodelSteps: SubModelSteps, input: any): ImageSet {
+        const res = new ImageSet(submodelSteps, input.prompt, input.samplerStr, input.cfg, input.path, input.key)
         for (const image of input.images) {
-            res.images.push(Image.from_json(image))
+            res.images.push(Image.from_json(res, image))
         }
         return res
     }
@@ -46,8 +51,10 @@ class SubModelSteps {
     rendered: boolean
     imagesets: Array<ImageSet>
     path: string
+    submodel: SubModel
 
-    constructor(steps: number, path: string) {
+    constructor(submodel: SubModel, steps: number, path: string) {
+        this.submodel = submodel
         this.path = path
         this.steps = steps
         this.visible = false
@@ -55,11 +62,11 @@ class SubModelSteps {
         this.imagesets = new Array()
     }
 
-    static from_json(input: any): SubModelSteps {
-        const res = new SubModelSteps(input.steps, input.path)
+    static from_json(submodel: SubModel, input: any): SubModelSteps {
+        const res = new SubModelSteps(submodel, input.steps, input.path)
         console.log(`input.path = ${input.path}`)
         for (const imageset of input.imageSets) {
-            const oneIS = ImageSet.from_json(imageset)
+            const oneIS = ImageSet.from_json(res, imageset)
             res.imagesets.push(oneIS)
         }
         return res
@@ -74,10 +81,12 @@ class SubModel {
     learningRate: string
     extras: Set<string>
     visible: boolean
+    model: Model
 
-    constructor(submodelStr: string = "", seed: number = 0, batch: number = 1,
+    constructor(model: Model, submodelStr: string = "", seed: number = 0, batch: number = 1,
                  learningRate: string = "",
                  extras: Set<string> = new Set()) {
+        this.model = model
         this.submodelStr = submodelStr
         this.seed = seed
         this.batch = batch
@@ -87,8 +96,8 @@ class SubModel {
         this.submodelSteps = []
     }
 
-    static from_json(input: any): SubModel {
-        const res = new SubModel()
+    static from_json(model: Model, input: any): SubModel {
+        const res = new SubModel(model)
         res.submodelStr = input.submodelStr
         res.seed = input.seed
         res.batch = input.batch
@@ -96,7 +105,7 @@ class SubModel {
         res.extras = new Set(input.extras)
 
         for (const oneSteps of input.submodelSteps) {
-            const submodelSteps = SubModelSteps.from_json(oneSteps)
+            const submodelSteps = SubModelSteps.from_json(res, oneSteps)
             res.submodelSteps.push(submodelSteps)
         }
         return res
@@ -121,7 +130,7 @@ class Model {
         res.name = input.name
         res.base = input.base
         for (const submodelIn of input.submodels) {
-            res.submodels.push(SubModel.from_json(submodelIn))
+            res.submodels.push(SubModel.from_json(res, submodelIn))
         }
         return res
     }
