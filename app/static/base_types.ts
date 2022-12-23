@@ -46,17 +46,17 @@ class ImageSet {
 }
 
 class SubModelSteps {
+    path: string
+    submodel: SubModel
     steps: number
     visible: boolean
     rendered: boolean
     imagesets: Array<ImageSet>
-    path: string
-    submodel: SubModel
     canGenerate: boolean
 
-    constructor(submodel: SubModel, steps: number, path: string, canGenerate: boolean) {
-        this.submodel = submodel
+    constructor(path: string, submodel: SubModel, steps: number, canGenerate: boolean) {
         this.path = path
+        this.submodel = submodel
         this.steps = steps
         this.visible = false
         this.rendered = false
@@ -65,7 +65,7 @@ class SubModelSteps {
     }
 
     static from_json(submodel: SubModel, input: any): SubModelSteps {
-        const res = new SubModelSteps(submodel, input.steps, input.path, input.canGenerate)
+        const res = new SubModelSteps(input.path, submodel, input.steps, input.canGenerate)
         for (const imageset of input.imageSets) {
             const oneIS = ImageSet.from_json(res, imageset)
             res.imagesets.push(oneIS)
@@ -75,6 +75,7 @@ class SubModelSteps {
 }
 
 class SubModel {
+    path: string
     submodelStr: string
     seed: number
     submodelSteps: Array<SubModelSteps>
@@ -84,9 +85,11 @@ class SubModel {
     visible: boolean
     model: Model
 
-    constructor(model: Model, submodelStr: string = "", seed: number = 0, batch: number = 1,
+    constructor(path: string, 
+                 model: Model, submodelStr: string = "", seed: number = 0, batch: number = 1,
                  learningRate: string = "",
                  extras: Set<string> = new Set()) {
+        this.path = path
         this.model = model
         this.submodelStr = submodelStr
         this.seed = seed
@@ -98,7 +101,7 @@ class SubModel {
     }
 
     static from_json(model: Model, input: any): SubModel {
-        const res = new SubModel(model)
+        const res = new SubModel(input.path, model)
         res.submodelStr = input.submodelStr
         res.seed = input.seed
         res.batch = input.batch
@@ -114,12 +117,14 @@ class SubModel {
 }
 
 class Model {
+    path: string
     name: string
     base: string
     submodels: Array<SubModel>
     visible: boolean
 
-    constructor(name: string, base: string) {
+    constructor(path: string, name: string, base: string) {
+        this.path = path
         this.name = name
         this.base = base
         this.submodels = new Array()
@@ -127,7 +132,7 @@ class Model {
     }
 
     static from_json(input: any): Model {
-        const res = new Model(input.name, input.base)
+        const res = new Model(input.path, input.name, input.base)
         for (const submodelIn of input.submodels) {
             res.submodels.push(SubModel.from_json(res, submodelIn))
         }

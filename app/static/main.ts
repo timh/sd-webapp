@@ -1,60 +1,107 @@
 import { Model, SubModel, SubModelSteps, ImageSet, Image } from "./base_types.js"
 import { sort, createElement } from "./util.js"
+import { StoredVal } from "./storage.js"
 
 const MODEL_FIELDS = ["name", "base"]
 const SUBMODEL_FIELDS = ["submodelStr", "seed", "batch", "learningRate"]
 const DESELECTED = "deselected"
 
+const STORE_VIS_MODEL = new StoredVal('vis_model', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_SUBMODEL = new StoredVal('vis_submodel', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_SUBMODEL_STEPS = new StoredVal('vis_submodelSteps', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_IMAGESET = new StoredVal('vis_imageSet', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+
 var allModels: Array<Model>
-var allImageSets: Array<Model>
-var allSubmodelStepsVisible: Map<string, SubModelSteps>
+var allSubmodelStepsVisible: Map<string, SubModelSteps> = new Map()
 
 // (short) imageset keys that are visible.
 var allImageSetsVisible: Set<string> = new Set()
 
-function toggleVisModel(elementId: string, models: Array<Model>, model: Model) {
+function loadVisibility() {
+    const visModel = STORE_VIS_MODEL.get()
+    const visSubmodel = STORE_VIS_SUBMODEL.get()
+    const visSubmodelSteps = STORE_VIS_SUBMODEL_STEPS.get()
+
+    for (const model of allModels) {
+        model.visible = visModel.has(model.path)
+        for (const submodel of model.submodels) {
+            submodel.visible = visSubmodel.has(submodel.path)
+            for (const oneSteps of submodel.submodelSteps) {
+                oneSteps.visible = visSubmodelSteps.has(oneSteps.path)
+                allSubmodelStepsVisible.set(oneSteps.path, oneSteps)
+            }
+        }
+    }
+
+    const visImageSet = STORE_VIS_IMAGESET.get()
+    for (const imagesetKey of visImageSet) {
+        allImageSetsVisible.add(imagesetKey)
+    }
+}
+
+function toggleVisModel(model: Model) {
     model.visible = !model.visible
     console.log(`toggle model ${model.name} to ${model.visible}`)
-    // renderModels()
+    if (model.visible) {
+        STORE_VIS_MODEL.get().add(model.path)
+    }
+    else {
+        STORE_VIS_MODEL.get().delete(model.path)
+    }
+    STORE_VIS_MODEL.save()
+    renderModels()
 }
 
-function toggleVisSubmodel(elementId: string, models: Array<Model>, submodel: SubModel) {
+function toggleVisSubmodel(submodel: SubModel) {
     submodel.visible = !submodel.visible
     console.log(`toggle submodel ${submodel.submodelStr} to ${submodel.visible}`)
-    // renderModels()
+    if (submodel.visible) {
+        STORE_VIS_SUBMODEL.get().add(submodel.path)
+    }
+    else {
+        STORE_VIS_SUBMODEL.get().delete(submodel.path)
+    }
+    STORE_VIS_SUBMODEL.save()
+    renderModels()
 }
 
-function toggleVisSubmodelSteps(elementId: string, models: Array<Model>, submodelSteps: SubModelSteps) {
+function toggleVisSubmodelSteps(submodelSteps: SubModelSteps) {
     submodelSteps.visible = !submodelSteps.visible
     console.log(`toggle submodel steps to ${!submodelSteps.visible}; path = ${submodelSteps.path}`)
     if (submodelSteps.visible) {
         allSubmodelStepsVisible.set(submodelSteps.path, submodelSteps)
+        STORE_VIS_SUBMODEL_STEPS.get().add(submodelSteps.path)
     }
     else {
         allSubmodelStepsVisible.delete(submodelSteps.path)
+        STORE_VIS_SUBMODEL_STEPS.get().delete(submodelSteps.path)
     }
-    renderModels(elementId, models)
+    STORE_VIS_SUBMODEL_STEPS.save()
+    renderModels()
 }
 
-function toggleVisImageSet(elementId: string, models: Array<Model>, imagesetKey: string) {
+function toggleVisImageSet(imagesetKey: string) {
     if (allImageSetsVisible.has(imagesetKey)) {
         allImageSetsVisible.delete(imagesetKey)
+        STORE_VIS_IMAGESET.get().delete(imagesetKey)
     }
     else {
         allImageSetsVisible.add(imagesetKey)
+        STORE_VIS_IMAGESET.get().add(imagesetKey)
     }
-    renderModels(elementId, models)
+    STORE_VIS_IMAGESET.save()
+    renderModels()
 }
 
-function renderModels(elementId: string, models: Array<Model>) {
-    const rootElem = document.getElementById(elementId)!
+function renderModels() {
+    const rootElem = document.getElementById("models")!
     for (const child of Array.from(rootElem.children)) {
         if (!child.className.includes("header")) {
             rootElem.removeChild(child)
         }
     }
 
-    for (const [modelIdx, model] of models.entries()) {
+    for (const [modelIdx, model] of allModels.entries()) {
         const modelClass = `model_${modelIdx}`
         for (const field of MODEL_FIELDS) {
             const fieldElem = rootElem.appendChild(createElement("span", {class: field}, model[field].toString()))
@@ -62,7 +109,7 @@ function renderModels(elementId: string, models: Array<Model>) {
                 fieldElem.classList.add(DESELECTED)
             }
             fieldElem.onclick = function(ev) { 
-                toggleVisModel(elementId, models, model)
+                toggleVisModel(model)
                 return false
             }
         }
@@ -90,7 +137,7 @@ function renderModels(elementId: string, models: Array<Model>) {
                 }
                 rootElem.appendChild(elem)
                 elem.onclick = function(ev) {
-                    toggleVisSubmodel(elementId, models, submodel)
+                    toggleVisSubmodel(submodel)
                     return false
                 }
             }
@@ -107,7 +154,7 @@ function renderModels(elementId: string, models: Array<Model>) {
                 }
                 console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path}`)
                 stepElem.onclick = function(ev) {
-                    toggleVisSubmodelSteps(elementId, models, oneSteps)
+                    toggleVisSubmodelSteps(oneSteps)
                     return false
                 }
             }
@@ -116,10 +163,10 @@ function renderModels(elementId: string, models: Array<Model>) {
         }
     }
 
-    renderImages(elementId, models, rootElem)
+    renderImages(rootElem)
 }
 
-function renderImages(elementId: string, models: Array<Model>, rootElem: HTMLElement) {
+function renderImages(rootElem: HTMLElement) {
     const imagesElem = document.getElementById("images")!
     for (const child of Array.from(imagesElem.children)) {
         imagesElem.removeChild(child)
@@ -171,7 +218,7 @@ function renderImages(elementId: string, models: Array<Model>, rootElem: HTMLEle
         }
 
         imagesetSpan.onclick = function(ev) {
-            toggleVisImageSet(elementId, models, imagesetKey)
+            toggleVisImageSet(imagesetKey)
             return false
         }
     }
@@ -189,28 +236,11 @@ async function loadModels() {
             allModels.push(model)
         }
     }
+
+    loadVisibility()
 }
 
-async function loadImageSets() {
-    var resp = await fetch("/imagesets")
-
-    const data = await resp.text()
-    if (resp.ok) {
-        allImageSets = new Array()
-        const modelsIn = JSON.parse(data)
-        for (const modelIn of modelsIn) {
-            const model = Model.from_json(modelIn)
-            allImageSets.push(model)
-        }
-    }
-}
-
-loadModels().then((val) => {
-    allSubmodelStepsVisible = new Map()
-    console.log("fetched models.")
-    //renderModels('models', allModels)
-    loadImageSets().then((val2) => {
-        console.log("fetched image sets.")
-        renderModels('imagesets', allImageSets)
-    })
+loadModels().then((val2) => {
+    console.log("fetched image sets / models")
+    renderModels()
 })

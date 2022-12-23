@@ -34,18 +34,14 @@ def make_json(obj) -> Response:
     resp.headers["Content-Type"] = "application/json"
     return resp
 
-# @cache.cached(timeout=30)
-# def _load_models():
-#     return load.list_models()
-
 @cache.cached(timeout=30)
-def _load_imagesets() -> List[Model]:
-    return load.list_imagesets()
+def _load_models() -> List[Model]:
+    return load.list_models()
 
 @cache.cached(timeout=30)
 def _load_image_dict():
     res: Dict[str, Image] = dict()
-    for model in _load_imagesets():
+    for model in _load_models():
         for submodel in model.submodels:
             for steps in submodel.submodelSteps:
                 for imageset in steps.imageSets:
@@ -53,14 +49,9 @@ def _load_image_dict():
                         res[str(image.path())] = image
     return res
 
-# @app.route('/models')
-# def list_models():
-#     res = [model.to_dict() for model in _load_models()]
-#     return make_json(res)
-
-@app.route('/imagesets')
-def list_imagesets():
-    res = [imageset.to_dict() for imageset in _load_imagesets()]
+@app.route('/models')
+def list_models():
+    res = [model.to_dict() for model in _load_models()]
     return make_json(res)
 
 @app.route('/image')

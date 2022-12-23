@@ -19,7 +19,7 @@ def subdirs(path: Path) -> List[Path]:
     return [item for item in path.iterdir() if item.is_dir()]
 
 # add models that can generate new images to an existing list of models
-def add_models(modelsWithImages: List[Model]) -> List[Model]:
+def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
     res = list(modelsWithImages)
     modelsByPath: Dict[str, Model] = dict()
     submodelsByPath: Dict[str, SubModel] = dict()
@@ -59,14 +59,15 @@ def add_models(modelsWithImages: List[Model]) -> List[Model]:
             modelName = modelName.replace("-sd15", "")
             modelBase = "sd15"
         
-        parts = modelName.split("-")
-        if len(parts) > 1:
-            modelName = parts[0]
-            for part in parts[1:]:
-                if part.startswith("batch"):
-                    modelBatch = int(part.replace("batch", ""))
-                else:
-                    modelExtras.add(part)
+        if not modelName.startswith("stable"):
+            parts = modelName.split("-")
+            if len(parts) > 1:
+                modelName = parts[0]
+                for part in parts[1:]:
+                    if part.startswith("batch"):
+                        modelBatch = int(part.replace("batch", ""))
+                    else:
+                        modelExtras.add(part)
         
         match = RE_BATCH.match(modelName)
         if match:
@@ -105,7 +106,7 @@ def add_models(modelsWithImages: List[Model]) -> List[Model]:
 
     return res
 
-def list_imagesets() -> List[Model]:
+def list_models() -> List[Model]:
     res: List[Model] = list()
     for model_dir in subdirs(IMAGE_DIR):
         name_parts = model_dir.name.split("+")
@@ -162,7 +163,7 @@ def list_imagesets() -> List[Model]:
 
         res.append(model)
     
-    res = add_models(res)
+    res = add_generatable_models(res)
     return sort_models(res)
 
 # .../portrait photo of alexhin/sampler=dpm++1:50,cfg=7
