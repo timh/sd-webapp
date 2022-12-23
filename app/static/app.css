@@ -1,10 +1,10 @@
-#chooser {
+.model_list {
     display: grid;
     grid-template-columns: max-content;
     width: max-content;
 }
 
-#chooser span {
+.model_list span {
     width: max-content;
     border-radius: 5px;
     margin-top: 2px;
@@ -19,40 +19,40 @@
     /* text-align: right; */
 }
 
-#chooser .deselected {
+.model_list .deselected {
     background-color: gray;
 }
 
-#chooser .submodelSteps {
+.model_list .submodelSteps {
     background: none;
 }
 
-.modelName { /* modelName */
+.model_list .name { /* modelName */
     grid-column: 1;
 }
-.modelBase { /* modelName */
+.model_list .base { /* modelName */
     grid-column: 2;
-    display: none;
+    /* display: none; */
 }
-.modelExtras {
+.model_list .extras {
     grid-column: 3;
 }
 
-.modelStr {
+.model_list .submodelStr {
     grid-column: 4;
     display: none;
 }
 
-.modelSeed {
+.model_list .seed {
     grid-column: 5;
     display: none;
 }
 
-.modelBatch {
+.model_list .batch {
     grid-column: 6;
 }
 
-.modelLR {
+.model_list .learningRate {
     grid-column: 7;
 }
 
@@ -64,6 +64,6 @@
     margin: 2px;
 }
 
-#chooser .header {
+.model_list .header {
     background: none;
 }

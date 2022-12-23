@@ -1,62 +1,67 @@
-
-class SubModel {
-    modelStr: string
-    modelSeed: number
-    modelStepsVisible: Map<number, boolean>
-    modelSteps: Array<number>
-    modelBatch: number
-    modelLR: string
-    modelExtras: Set<string>
+class SubModelSteps {
+    steps: number
     visible: boolean
 
-    constructor(modelStr: string = "", modelSeed: number = 0, modelBatch: number = 1,
-                 modelLR: string = "", modelSteps: Array<number> = [],
-                 modelExtras: Set<string> = new Set()) {
-        this.modelStr = modelStr
-        this.modelSeed = modelSeed
-        this.modelBatch = modelBatch
-        this.modelLR = modelLR
-        this.modelExtras = modelExtras
-        this.modelSteps = modelSteps.sort()
-        this.modelStepsVisible = new Map()
-        for (const steps of this.modelSteps) {
-            this.modelStepsVisible.set(steps, true)
-        }
+    constructor(steps: number) {
+        this.steps = steps
+        this.visible = false
+    }
+}
+
+class SubModel {
+    submodelStr: string
+    seed: number
+    submodelSteps: Array<SubModelSteps>
+    batch: number
+    learningRate: string
+    extras: Set<string>
+    visible: boolean
+
+    constructor(submodelStr: string = "", seed: number = 0, batch: number = 1,
+                 learningRate: string = "",
+                 extras: Set<string> = new Set()) {
+        this.submodelStr = submodelStr
+        this.seed = seed
+        this.batch = batch
+        this.learningRate = learningRate
+        this.extras = extras
         this.visible = true
+        this.submodelSteps = []
     }
 
     static from_json(input: any): SubModel {
         const res = new SubModel()
-        res.modelStr = input.modelStr
-        res.modelSeed = input.modelSeed
-        res.modelBatch = input.modelBatch
-        res.modelLR = input.modelLR
-        res.modelExtras = new Set(input.modelExtras)
-        res.modelSteps = input.modelSteps
-        for (const steps of res.modelSteps) {
-            res.modelStepsVisible.set(steps, true)
+        res.submodelStr = input.submodelStr
+        res.seed = input.seed
+        res.batch = input.batch
+        res.learningRate = input.learningRate
+        res.extras = new Set(input.extras)
+
+        for (const stepsNum of input.submodelSteps) {
+            const submodelSteps = new SubModelSteps(stepsNum)
+            res.submodelSteps.push(submodelSteps)
         }
         return res
     }
 }
 
 class Model {
-    modelName: string
-    modelBase: string
+    name: string
+    base: string
     submodels: Array<SubModel>
     visible: boolean
 
-    constructor(modelName: string = "", modelBase: string = "") {
-        this.modelName = modelName
-        this.modelBase = modelBase
+    constructor(name: string = "", base: string = "") {
+        this.name = name
+        this.base = base
         this.submodels = new Array()
         this.visible = true
     }
 
     static from_json(input: any): Model {
         const res = new Model()
-        res.modelName = input.modelName
-        res.modelBase = input.modelBase
+        res.name = input.name
+        res.base = input.base
         for (const submodelIn of input.submodels) {
             res.submodels.push(SubModel.from_json(submodelIn))
         }
@@ -64,4 +69,4 @@ class Model {
     }
 }
     
-export { SubModel, Model }
+export { SubModelSteps, SubModel, Model }

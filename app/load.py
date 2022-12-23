@@ -111,12 +111,13 @@ def list_imagesets() -> Iterable[ImageSet]:
             modelBatch = 0
             modelLR = 1.0
             modelSeed = 0
+            extras: Set[str] = set()
 
             kv_pairs = submodel_dir.name.split(",")
             print(f"  - submodel_dir {submodel_dir.name}, kv_pairs {kv_pairs}")
             for kv_pair in kv_pairs:
                 if not "=" in kv_pair:
-                    print(f"    not a k/v pair {kv_pair}: submodel_dir = {submodel_dir}")
+                    extras.add(kv_pair)
                     continue
                 key, val = kv_pair.split("=")
                 if key == "batch":
@@ -128,20 +129,21 @@ def list_imagesets() -> Iterable[ImageSet]:
                 else:
                     raise ValueError(f"submodel_dir.name = {submodel_dir.name}; don't know how to parse key = {key}, val = '{val}'")
 
-            modelSteps = []
+            submodelSteps = []
             for steps_dir in subdirs(submodel_dir):
                 print(f"    - steps_dir {steps_dir}")
                 steps = steps_dir.name.replace("steps=", "")
                 if not all([c.isdecimal() for c in steps]):
                     continue
                 steps = int(steps)
-                modelSteps.append(steps)
+                submodelSteps.append(SubModelSteps(steps))
 
-            if len(modelSteps) == 0:
+            if len(submodelSteps) == 0:
                 print(f"    * no steps directories, skipping submodel")
                 continue
 
-            submodel = SubModel(seed=modelSeed, vatch=modelBatch, learningRate=modelLR)
+            submodel = SubModel(seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=extras)
+            submodel.submodelSteps.extend(submodelSteps)
             submodels.append(submodel)
 
         if len(submodels) == 0:
@@ -150,6 +152,6 @@ def list_imagesets() -> Iterable[ImageSet]:
 
         model = Model(modelName, modelBase)
         res.append(model)
-        model.submodels.extend([submodels])
+        model.submodels.extend(submodels)
         
     return res

@@ -6,7 +6,7 @@ import inspect
 class BaseModel:
     def to_dict(self) -> Dict[str, str]:
         attributes = sorted(self.__dict__.keys()) 
-        
+
         res: Dict[str, str] = {}
         for attr in attributes:
             value = getattr(self, attr)
@@ -90,7 +90,7 @@ class Model(BaseModel):
         return res
 
 class ImageSet: pass
-class Image:
+class Image(BaseModel):
     imageset: ImageSet
     seed: int
 

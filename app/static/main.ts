@@ -1,31 +1,31 @@
-import { Model, SubModel } from "./base_types.js"
+import { Model, SubModel, SubModelSteps } from "./base_types.js"
 import { sort, createElement } from "./util.js"
 
-const MODEL_FIELDS = ["modelName", "modelBase"]
-const SUBMODEL_FIELDS = ["modelStr", "modelSeed", "modelBatch", "modelLR"]
+const MODEL_FIELDS = ["name", "base"]
+const SUBMODEL_FIELDS = ["submodelStr", "seed", "batch", "learningRate"]
 const DESELECTED = "deselected"
 
 function toggleVisModel(model: Model) {
     model.visible = !model.visible
-    // console.log(`toggle model ${model.modelName} to ${model.visible}`)
-    renderModels()
+    console.log(`toggle model ${model.name} to ${model.visible}`)
+    // renderModels()
 }
 
 function toggleVisSubmodel(submodel: SubModel) {
     submodel.visible = !submodel.visible
-    // console.log(`toggle submodel ${submodel.modelStr} to ${submodel.visible}`)
-    renderModels()
+    console.log(`toggle submodel ${submodel.submodelStr} to ${submodel.visible}`)
+    // renderModels()
 }
 
-function toggleVisSubmodelSteps(submodel: SubModel, steps: number) {
-    submodel.modelStepsVisible.set(steps, !submodel.modelStepsVisible.get(steps))
-    // console.log(`toggle submodel steps ${submodel.modelStr} ${steps} to ${submodel.modelStepsVisible.get(steps)}`)
-    renderModels()
+function toggleVisSubmodelSteps(submodelSteps: SubModelSteps) {
+    submodelSteps.visible = !submodelSteps.visible
+    console.log(`toggle submodel steps to ${submodelSteps.steps}}`)
+    // renderModels()
 }
 
 
-function renderModels() {
-    const chooser = document.getElementById("chooser")!
+function renderModels(elementId: string, models: Array<Model>) {
+    const chooser = document.getElementById(elementId)!
     const children = Array.from(chooser.children)
     for (const child of children) {
         if (!child.className.includes("header")) {
@@ -47,12 +47,13 @@ function renderModels() {
             const submodelElems = new Array<HTMLElement>()
 
             const submodelClass = `${modelClass}_${submodelIdx}`
-            const extrasString = Array.from(submodel.modelExtras).join(" ")
+            const extrasString = Array.from(submodel.extras).join(" ")
             if (extrasString != "") {
-                submodelElems.push(createElement("span", {class: "modelExtras"}, extrasString))
+                submodelElems.push(createElement("span", {class: "extras"}, extrasString))
             }
 
             for (const field of SUBMODEL_FIELDS) {
+                console.log(`field = ${field}`)
                 const contents = submodel[field].toString()
                 if (contents != "") {
                     submodelElems.push(createElement("span", {class: field}, contents))
@@ -60,12 +61,12 @@ function renderModels() {
             }
 
             const stepsElem = createElement("span", {class: "submodelSteps"})
-            for (const steps of submodel.modelSteps) {
-                const stepElem = stepsElem.appendChild(createElement("span", {class: "stepChoice"}, steps.toString()))
-                if (!submodel.modelStepsVisible.get(steps) || !submodel.visible || !model.visible) {
+            for (const oneSteps of submodel.submodelSteps) {
+                const stepElem = stepsElem.appendChild(createElement("span", {class: "stepChoice"}, oneSteps.steps.toString()))
+                if (!oneSteps.visible || !submodel.visible || !model.visible) {
                     stepElem.classList.add(DESELECTED)
                 }
-                stepElem.onclick = function(ev) { toggleVisSubmodelSteps(submodel, steps); return false }
+                stepElem.onclick = function(ev) { toggleVisSubmodelSteps(oneSteps); return false }
             }
 
             for (const elem of submodelElems) {
@@ -80,22 +81,41 @@ function renderModels() {
     }
 }
 
-var models: Array<Model>
+var allModels: Array<Model>
+var allImageSets: Array<Model>
 async function loadModels() {
     var resp = await fetch("/models")
 
     const data = await resp.text()
     if (resp.ok) {
-        models = new Array()
+        allModels = new Array()
         const modelsIn = JSON.parse(data)
         for (const modelIn of modelsIn) {
             const model = Model.from_json(modelIn)
-            models.push(model)
+            allModels.push(model)
+        }
+    }
+}
+
+async function loadImageSets() {
+    var resp = await fetch("/imagesets")
+
+    const data = await resp.text()
+    if (resp.ok) {
+        allImageSets = new Array()
+        const modelsIn = JSON.parse(data)
+        for (const modelIn of modelsIn) {
+            const model = Model.from_json(modelIn)
+            allImageSets.push(model)
         }
     }
 }
 
 loadModels().then((val) => {
     console.log("fetched models.")
-    renderModels()
+    loadImageSets().then((val2) => {
+        console.log("fetched image sets.")
+        renderModels('models', allModels)
+        renderModels('imagesets', allImageSets)
+    })
 })
