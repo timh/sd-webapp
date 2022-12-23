@@ -67,3 +67,17 @@
 .model_list .header {
     background: none;
 }
+
+.model_list .imagesetChoice {
+    grid-column-start: 1;
+    grid-column-end: 9;
+}
+
+/* #images .image {
+    display: inline-block;
+} */
+
+#images .image img.thumbnail {
+    width: 128px;
+    height: 128px;
+}

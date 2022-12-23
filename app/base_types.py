@@ -40,14 +40,29 @@ class BaseModel:
         return ",".join(res)
 
 class ImageSet: pass
+class Model: pass
+class SubModel: pass
+
 class SubModelSteps(BaseModel):
     steps: int
     imageSets: List[ImageSet]
+    submodel: SubModel
 
-    def __init__(self, steps: int):
+    def __init__(self, submodel: SubModel, steps: int):
+        self.submodel = submodel
         self.steps = steps
         self.imageSets = list()
     
+    def path(self) -> Path:
+        return Path(self.submodel.path(), self.get_key())
+
+    def to_dict(self) -> Dict[str, any]:
+        attributes = set(self.__dict__.keys())
+        attributes.remove("submodel")
+        res = super().to_dict(sorted(attributes))
+        res['path'] = str(self.path())
+        return res
+
 class SubModel(BaseModel):
     submodelStr: str
     seed: int
@@ -55,15 +70,17 @@ class SubModel(BaseModel):
     learningRate: str
     submodelSteps: List[SubModelSteps]
     extras: Set[str]
+    model: Model
 
-    def __init__(self, submodelStr = "", seed = 0, batch = 1, learningRate = "", extras: Set[str] = set()):
+    def __init__(self, model: Model = None, submodelStr = "", seed = 0, batch = 1, learningRate = "", extras: Set[str] = set()):
+        self.model = model
         self.submodelStr = submodelStr
         self.seed = seed
         self.batch = batch
         self.learningRate = learningRate
         self.extras = extras
         self.submodelSteps = list()
-    
+
     def get_key(self) -> str:
         res = []
         res.append(f"seed={self.seed}")
@@ -73,6 +90,16 @@ class SubModel(BaseModel):
             # extras come at end.
             res.append(",".join(self.extras))
         return ",".join(res)
+
+    def path(self) -> Path:
+        return Path(self.model.path(), self.get_key())
+
+    def to_dict(self) -> Dict[str, any]:
+        attributes = set(self.__dict__.keys())
+        attributes.remove("model")
+        res = super().to_dict(sorted(attributes))
+        res['path'] = str(self.path())
+        return res
 
 class Model(BaseModel):
     name: str
@@ -90,6 +117,14 @@ class Model(BaseModel):
             res += f"+{self.base}"
         return res
 
+    def path(self) -> Path:
+        return Path(self.get_key())
+
+    def to_dict(self) -> Dict[str, any]:
+        res = super().to_dict()
+        res['path'] = str(self.path())
+        return res
+    
 class Image(BaseModel):
     imageset: ImageSet
     seed: int
@@ -98,15 +133,15 @@ class Image(BaseModel):
         self.imageset = imageset
         self.seed = seed
 
-    def relpath(self) -> Path:
+    def path(self) -> Path:
         png = f"{self.seed:010}.png"
-        return Path(self.imageset.relpath(), png)
+        return Path(self.imageset.path(), png)
 
     def to_dict(self) -> Dict[str, any]:
         attributes = set(self.__dict__.keys())
         attributes.remove("imageset")
         res = super().to_dict(sorted(attributes))
-        res['relpath'] = str(self.relpath())
+        res['path'] = str(self.path())
         return res
     
 class ImageSet(BaseModel):
@@ -130,7 +165,7 @@ class ImageSet(BaseModel):
             self.images.append(Image(self, seed))
         self.images = list()
 
-    def relpath(self) -> Path:
+    def path(self) -> Path:
         endStr = f"sampler={self.samplerStr},cfg={self.cfg}"
         return Path(self.model.get_key(), self.submodel.get_key(), self.submodelSteps.get_key(), self.prompt, endStr)
 
@@ -140,5 +175,5 @@ class ImageSet(BaseModel):
         attributes.remove("submodel")
         attributes.remove("submodelSteps")
         res = super().to_dict(sorted(attributes))
-        res['relpath'] = str(self.relpath())
+        res['path'] = str(self.path())
         return res

@@ -1,10 +1,68 @@
+class Image {
+    seed: number
+    path: string
+
+    constructor(seed: number, path: string) {
+        this.seed = seed
+        this.path = path
+    }
+
+    static from_json(input: any): Image {
+        return new Image(input.seed, input.path)
+    }
+}
+
+class ImageSet {
+    prompt: string
+    samplerStr: string
+    cfg: number
+    path: string
+    key: string
+    images: Array<Image>
+    visible: boolean
+
+    constructor(prompt: string, samplerStr: string, cfg: number, path: string, key: string) {
+        this.prompt = prompt
+        this.samplerStr = samplerStr
+        this.cfg = cfg
+        this.path = path
+        this.key = key
+        this.images = new Array()
+        this.visible = false
+    }
+
+    static from_json(input: any): ImageSet {
+        const res = new ImageSet(input.prompt, input.samplerStr, input.cfg, input.path, input.key)
+        for (const image of input.images) {
+            res.images.push(Image.from_json(image))
+        }
+        return res
+    }
+}
+
 class SubModelSteps {
     steps: number
     visible: boolean
+    rendered: boolean
+    imagesets: Array<ImageSet>
+    path: string
 
-    constructor(steps: number) {
+    constructor(steps: number, path: string) {
+        this.path = path
         this.steps = steps
         this.visible = false
+        this.rendered = false
+        this.imagesets = new Array()
+    }
+
+    static from_json(input: any): SubModelSteps {
+        const res = new SubModelSteps(input.steps, input.path)
+        console.log(`input.path = ${input.path}`)
+        for (const imageset of input.imageSets) {
+            const oneIS = ImageSet.from_json(imageset)
+            res.imagesets.push(oneIS)
+        }
+        return res
     }
 }
 
@@ -37,8 +95,8 @@ class SubModel {
         res.learningRate = input.learningRate
         res.extras = new Set(input.extras)
 
-        for (const stepsNum of input.submodelSteps) {
-            const submodelSteps = new SubModelSteps(stepsNum)
+        for (const oneSteps of input.submodelSteps) {
+            const submodelSteps = SubModelSteps.from_json(oneSteps)
             res.submodelSteps.push(submodelSteps)
         }
         return res
@@ -69,4 +127,4 @@ class Model {
     }
 }
     
-export { SubModelSteps, SubModel, Model }
+export { SubModelSteps, SubModel, Model, ImageSet, Image }

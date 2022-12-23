@@ -3,9 +3,10 @@ from typing import List, Dict, Tuple
 from flask import Flask, request, make_response, Response
 from flask_caching import Cache
 import datetime
+from pathlib import Path
 
 import load
-from base_types import BaseModel, Model, ImageSet
+from base_types import BaseModel, Model, ImageSet, Image
 
 app = Flask(__name__)
 
@@ -33,26 +34,29 @@ def make_json(obj) -> Response:
     resp.headers["Content-Type"] = "application/json"
     return resp
 
-@cache.cached(timeout=30)
-def _load_models():
-    return load.list_models()
+# @cache.cached(timeout=30)
+# def _load_models():
+#     return load.list_models()
 
 @cache.cached(timeout=30)
-def _load_imagesets():
+def _load_imagesets() -> List[Model]:
     return load.list_imagesets()
 
 @cache.cached(timeout=30)
 def _load_image_dict():
-    res: Dict[str, (ImageSet, int)] = dict()
-    for imageset in _load_imagesets():
-        for image in imageset.images:
-            res[image.relpath()] = image
+    res: Dict[str, Image] = dict()
+    for model in _load_imagesets():
+        for submodel in model.submodels:
+            for steps in submodel.submodelSteps:
+                for imageset in steps.imageSets:
+                    for image in imageset.images:
+                        res[str(image.path())] = image
     return res
 
-@app.route('/models')
-def list_models():
-    res = [model.to_dict() for model in _load_models()]
-    return make_json(res)
+# @app.route('/models')
+# def list_models():
+#     res = [model.to_dict() for model in _load_models()]
+#     return make_json(res)
 
 @app.route('/imagesets')
 def list_imagesets():
@@ -61,12 +65,17 @@ def list_imagesets():
 
 @app.route('/image')
 def get_image():
-    filename = request.args.get("filename")
-    if filename is None:
-        return make_error("missing arg: filename", 400)
+    path = request.args.get("path")
+    if path is None:
+        return make_error("missing arg: path", 400)
 
-    image = _load_image_dict().get(filename, None)
+    image = _load_image_dict().get(path, None)
     if image is None:
+        print(f"got path {path}")
         return make_error("image not found", 404)
+    
+    file = Path(load.IMAGE_DIR, path)
 
-    return make_json(image)
+    resp = make_response(open(file, "rb").read(), 200)
+    resp.headers["Content-Type"] = "image/png"
+    return resp

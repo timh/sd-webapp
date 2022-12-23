@@ -82,22 +82,20 @@ def list_models() -> Iterable[Model]:
                 continue
         
             steps_int = int(checkpoint.name.replace("checkpoint-", "").replace("save-", ""))
-            steps_obj = SubModelSteps(steps_int)
+            steps_obj = SubModelSteps(submodel, steps_int)
             submodel.submodelSteps.append(steps_obj)
         
         if len(submodel.submodelSteps) == 0:
-            submodel.submodelSteps.append(SubModelSteps(0))
+            submodel.submodelSteps.append(SubModelSteps(submodel, 0))
         
         submodel.submodelSteps = sorted(submodel.submodelSteps, key=lambda s: s.steps)
 
-    for model in res.values():
-        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.batch, submodel.learningRate, submodel.seed])
-    return sorted(list(res.values()), key=lambda model: model.name)
+    return sort_models(res.values())
 
 def subdirs(path: Path) -> List[Path]:
     return [item for item in path.iterdir() if item.is_dir()]
 
-def list_imagesets() -> Iterable[ImageSet]:
+def list_imagesets() -> Iterable[Model]:
     res: List[Model] = list()
     for model_dir in subdirs(IMAGE_DIR):
         name_parts = model_dir.name.split("+")
@@ -130,7 +128,7 @@ def list_imagesets() -> Iterable[ImageSet]:
                 else:
                     raise ValueError(f"submodel_dir.name = {submodel_dir.name}; don't know how to parse key = {key}, val = '{val}'")
 
-            submodel = SubModel(seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=extras)
+            submodel = SubModel(model=model, seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=extras)
             model.submodels.append(submodel)
 
             for steps_dir in subdirs(submodel_dir):
@@ -139,7 +137,7 @@ def list_imagesets() -> Iterable[ImageSet]:
                 if not all([c.isdecimal() for c in steps]):
                     continue
 
-                oneSteps = SubModelSteps(int(steps))
+                oneSteps = SubModelSteps(submodel=submodel, steps=int(steps))
                 submodel.submodelSteps.append(oneSteps)
 
                 _load_imagesets_for_submodelsteps(model, submodel, oneSteps, steps_dir)
@@ -153,8 +151,8 @@ def list_imagesets() -> Iterable[ImageSet]:
             continue
 
         res.append(model)
-        
-    return res
+    
+    return sort_models(res)
 
 # .../portrait photo of alexhin/sampler=dpm++1:50,cfg=7
 def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps: SubModelSteps, steps_dir: Path):
@@ -181,3 +179,10 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
 
                 image = Image(imageSet, seed)
                 imageSet.images.append(image)
+
+def sort_models(models: Iterable[Model]) -> Iterable[Model]:
+    for model in models:
+        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.batch, submodel.learningRate, submodel.seed, str(submodel.extras)])
+        for submodel in model.submodels:
+            submodel.submodelSteps = sorted(submodel.submodelSteps, key=lambda oneSteps: oneSteps.steps)
+    return sorted(list(models), key=lambda model: model.name)

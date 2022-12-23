@@ -86,7 +86,7 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
             cfg = int(match.group(3))
 
         modelBase = ""
-        for base in ["-f222v"]:
+        for base in ["-f222v", "-sd21", "-inpainting"]:
             if base in modelName:
                 modelBase = base[1:]
                 modelName = modelName.replace(base, "")
@@ -106,9 +106,9 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
         if modelStr in submodels:
             submodel = submodels[modelStr]
         else:
-            submodel = SubModel(submodelStr=modelStr, seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=submodelExtras)
+            submodel = SubModel(model=model, submodelStr=modelStr, seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=submodelExtras)
 
-        submodelSteps = SubModelSteps(modelSteps_int)
+        submodelSteps = SubModelSteps(submodel=submodel, steps=modelSteps_int)
         submodel.submodelSteps.append(submodelSteps)
 
         imageset = ImageSet(model=model, submodel=submodel, submodelSteps=submodelSteps, prompt=prompt, samplerStr=samplerStr, cfg=cfg)
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     images = get_images_submodels(Path("/home/tim/devel/outputs/alex12"), models, submodels)
 
     for image in images:
-        new_path = IMAGE_DIR.joinpath(image.relpath())
+        new_path = IMAGE_DIR.joinpath(image.path())
         new_path.parent.mkdir(exist_ok=True, parents=True)
         if new_path.exists():
             continue
