@@ -97,7 +97,11 @@ function renderModels(elementId: string, models: Array<Model>) {
 
             const stepsElem = createElement("span", {class: "submodelSteps"})
             for (const oneSteps of submodel.submodelSteps) {
-                const stepElem = stepsElem.appendChild(createElement("span", {class: "stepChoice"}, oneSteps.steps.toString()))
+                var stepsStr = oneSteps.steps.toString()
+                if (oneSteps.canGenerate) {
+                    stepsStr += "*"
+                }
+                const stepElem = stepsElem.appendChild(createElement("span", {class: "stepChoice"}, stepsStr))
                 if (!oneSteps.visible || !submodel.visible || !model.visible) {
                     stepElem.classList.add(DESELECTED)
                 }

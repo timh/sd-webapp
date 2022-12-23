@@ -52,19 +52,20 @@ class SubModelSteps {
     imagesets: Array<ImageSet>
     path: string
     submodel: SubModel
+    canGenerate: boolean
 
-    constructor(submodel: SubModel, steps: number, path: string) {
+    constructor(submodel: SubModel, steps: number, path: string, canGenerate: boolean) {
         this.submodel = submodel
         this.path = path
         this.steps = steps
         this.visible = false
         this.rendered = false
         this.imagesets = new Array()
+        this.canGenerate = canGenerate
     }
 
     static from_json(submodel: SubModel, input: any): SubModelSteps {
-        const res = new SubModelSteps(submodel, input.steps, input.path)
-        console.log(`input.path = ${input.path}`)
+        const res = new SubModelSteps(submodel, input.steps, input.path, input.canGenerate)
         for (const imageset of input.imageSets) {
             const oneIS = ImageSet.from_json(res, imageset)
             res.imagesets.push(oneIS)
@@ -118,7 +119,7 @@ class Model {
     submodels: Array<SubModel>
     visible: boolean
 
-    constructor(name: string = "", base: string = "") {
+    constructor(name: string, base: string) {
         this.name = name
         this.base = base
         this.submodels = new Array()
@@ -126,9 +127,7 @@ class Model {
     }
 
     static from_json(input: any): Model {
-        const res = new Model()
-        res.name = input.name
-        res.base = input.base
+        const res = new Model(input.name, input.base)
         for (const submodelIn of input.submodels) {
             res.submodels.push(SubModel.from_json(res, submodelIn))
         }

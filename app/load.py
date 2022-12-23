@@ -15,13 +15,24 @@ RE_DIR = re.compile(r"^(.+)@([\d\.]+)_r(\d+)")
 # alex22-f222v-batch2-cap-bf16
 RE_BATCH = re.compile(r"(.+)-batch(\d+)(.*)")
 
-def list_models() -> Iterable[Model]:
-    res: Dict[str, Model] = dict()
+def subdirs(path: Path) -> List[Path]:
+    return [item for item in path.iterdir() if item.is_dir()]
 
-    for subdir in MODEL_DIR.iterdir():
-        if not subdir.is_dir():
-            continue
+# add models that can generate new images to an existing list of models
+def add_models(modelsWithImages: List[Model]) -> List[Model]:
+    res = list(modelsWithImages)
+    modelsByPath: Dict[str, Model] = dict()
+    submodelsByPath: Dict[str, SubModel] = dict()
+    stepsByPath: Dict[str, SubModelSteps] = dict()
 
+    for model in modelsWithImages:
+        modelsByPath[model.image_path()] = model
+        for submodel in model.submodels:
+            submodelsByPath[submodel.image_path()] = submodel
+            for oneSteps in submodel.submodelSteps:
+                stepsByPath[oneSteps.image_path()] = oneSteps
+
+    for subdir in subdirs(MODEL_DIR):
         contents = [path for path in subdir.iterdir() 
                     if path.name == "model_index.json" or path.joinpath("model_index.json").exists()]
         if len(contents) == 0:
@@ -47,55 +58,54 @@ def list_models() -> Iterable[Model]:
         if "-sd15" in modelName:
             modelName = modelName.replace("-sd15", "")
             modelBase = "sd15"
-        if "-cap" in modelName:
-            modelName = modelName.replace("-cap", "")
-            modelExtras.add("cap")
-        if "-bf16" in modelName:
-            modelName = modelName.replace("-bf16", "")
-            modelExtras.add("bf16")
         
+        parts = modelName.split("-")
+        if len(parts) > 1:
+            modelName = parts[0]
+            for part in parts[1:]:
+                if part.startswith("batch"):
+                    modelBatch = int(part.replace("batch", ""))
+                else:
+                    modelExtras.add(part)
         
         match = RE_BATCH.match(modelName)
         if match:
             modelName = match.group(1) + match.group(3)
             modelBatch = int(match.group(2))
 
-        if modelName in res:
-            model = res[modelName]
+        model = Model(name=modelName, base=modelBase)
+        if model.image_path() in modelsByPath:
+            model = modelsByPath[model.image_path()]
         else:
-            model = Model(name=modelName, base=modelBase)
-            res[modelName] = model
+            modelsByPath[modelName] = model
+            res.append(model)
 
-        submodel_args = {
-            'submodelStr': modelStr, 
-            'seed': modelSeed,
-            'batch': modelBatch, 'learningRate': modelLR,
-            'extras': modelExtras
-        }
-        submodel = SubModel(**submodel_args)
-        model.submodels.append(submodel)
+        submodel = SubModel(model=model, submodelStr=modelStr, seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=modelExtras)
+        if submodel.image_path() in submodelsByPath:
+            submodel = submodelsByPath[submodel.image_path()]
+        else:
+            model.submodels.append(submodel)
 
-        for checkpoint in subdir.iterdir():
-            if not checkpoint.is_dir():
-                continue
+        for checkpoint in subdirs(subdir):
             if not checkpoint.joinpath("model_index.json").exists():
                 continue
         
             steps_int = int(checkpoint.name.replace("checkpoint-", "").replace("save-", ""))
-            steps_obj = SubModelSteps(submodel, steps_int)
-            submodel.submodelSteps.append(steps_obj)
+            steps_obj = SubModelSteps(submodel=submodel, steps=steps_int)
+            if steps_obj.image_path() in stepsByPath:
+                steps_obj = stepsByPath[steps_obj.image_path()]
+            else:
+                submodel.submodelSteps.append(steps_obj)
+            steps_obj.canGenerate = True
         
         if len(submodel.submodelSteps) == 0:
             submodel.submodelSteps.append(SubModelSteps(submodel, 0))
         
         submodel.submodelSteps = sorted(submodel.submodelSteps, key=lambda s: s.steps)
 
-    return sort_models(res.values())
+    return res
 
-def subdirs(path: Path) -> List[Path]:
-    return [item for item in path.iterdir() if item.is_dir()]
-
-def list_imagesets() -> Iterable[Model]:
+def list_imagesets() -> List[Model]:
     res: List[Model] = list()
     for model_dir in subdirs(IMAGE_DIR):
         name_parts = model_dir.name.split("+")
@@ -152,6 +162,7 @@ def list_imagesets() -> Iterable[Model]:
 
         res.append(model)
     
+    res = add_models(res)
     return sort_models(res)
 
 # .../portrait photo of alexhin/sampler=dpm++1:50,cfg=7

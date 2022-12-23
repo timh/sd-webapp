@@ -15,7 +15,7 @@ class BaseModel:
                 value = list(value)
             if isinstance(value, Iterable) and len(value) > 0 and isinstance(value[0], BaseModel):
                 value = [child.to_dict() for child in value]
-            if not isinstance(value, list) and not isinstance(value, str) and not isinstance(value, int) and not isinstance(value, float):
+            if not isinstance(value, list) and not isinstance(value, str) and not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, bool):
                 print(f"skip attribute {attr} value {value}")
                 continue
             res[attr] = value
@@ -47,20 +47,27 @@ class SubModelSteps(BaseModel):
     steps: int
     imageSets: List[ImageSet]
     submodel: SubModel
+    canGenerate: bool
+    model_path: Path
 
-    def __init__(self, submodel: SubModel, steps: int):
+    def __init__(self, submodel: SubModel, steps: int, canGenerate: bool = False, model_path: Path = None):
         self.submodel = submodel
         self.steps = steps
         self.imageSets = list()
+        self.canGenerate = canGenerate
+        self.model_path = model_path
     
-    def path(self) -> Path:
-        return Path(self.submodel.path(), self.get_key())
+    def image_path(self) -> Path:
+        return Path(self.submodel.image_path(), self.get_key())
+
+    def get_key(self) -> str:
+        return f"steps={self.steps}"
 
     def to_dict(self) -> Dict[str, any]:
         attributes = set(self.__dict__.keys())
         attributes.remove("submodel")
         res = super().to_dict(sorted(attributes))
-        res['path'] = str(self.path())
+        res['path'] = str(self.image_path())
         return res
 
 class SubModel(BaseModel):
@@ -91,14 +98,14 @@ class SubModel(BaseModel):
             res.append(",".join(self.extras))
         return ",".join(res)
 
-    def path(self) -> Path:
-        return Path(self.model.path(), self.get_key())
+    def image_path(self) -> Path:
+        return Path(self.model.image_path(), self.get_key())
 
     def to_dict(self) -> Dict[str, any]:
         attributes = set(self.__dict__.keys())
         attributes.remove("model")
         res = super().to_dict(sorted(attributes))
-        res['path'] = str(self.path())
+        res['path'] = str(self.image_path())
         return res
 
 class Model(BaseModel):
@@ -117,12 +124,12 @@ class Model(BaseModel):
             res += f"+{self.base}"
         return res
 
-    def path(self) -> Path:
+    def image_path(self) -> Path:
         return Path(self.get_key())
 
     def to_dict(self) -> Dict[str, any]:
         res = super().to_dict()
-        res['path'] = str(self.path())
+        res['path'] = str(self.image_path())
         return res
     
 class Image(BaseModel):
