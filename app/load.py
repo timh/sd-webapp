@@ -2,7 +2,7 @@ from typing import Iterable, List, Set, Dict
 from pathlib import Path
 import re
 
-from base_types import SubModelSteps, SubModel, Model, ImageSet
+from base_types import SubModelSteps, SubModel, Model, ImageSet, Image
 
 MODEL_DIR = Path("/home/tim/models")
 IMAGE_DIR = Path("/home/tim/devel/outputs/app-images")
@@ -94,19 +94,20 @@ def list_models() -> Iterable[Model]:
         model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.batch, submodel.learningRate, submodel.seed])
     return sorted(list(res.values()), key=lambda model: model.name)
 
-def list_imagesets() -> Iterable[ImageSet]:
-    def subdirs(path: Path) -> List[Path]:
-        return [item for item in path.iterdir() if item.is_dir()]
+def subdirs(path: Path) -> List[Path]:
+    return [item for item in path.iterdir() if item.is_dir()]
 
+def list_imagesets() -> Iterable[ImageSet]:
     res: List[Model] = list()
     for model_dir in subdirs(IMAGE_DIR):
         name_parts = model_dir.name.split("+")
         modelName = name_parts[0]
         modelBase = name_parts[1] if len(name_parts) > 1 else ""
 
+        model = Model(modelName, modelBase)
+
         print(f"model_dir {model_dir}, modelName {modelName}, modelBase {modelBase}")
 
-        submodels: List[SubModel] = []
         for submodel_dir in subdirs(model_dir):
             modelBatch = 0
             modelLR = 1.0
@@ -129,29 +130,54 @@ def list_imagesets() -> Iterable[ImageSet]:
                 else:
                     raise ValueError(f"submodel_dir.name = {submodel_dir.name}; don't know how to parse key = {key}, val = '{val}'")
 
-            submodelSteps = []
+            submodel = SubModel(seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=extras)
+            model.submodels.append(submodel)
+
             for steps_dir in subdirs(submodel_dir):
                 print(f"    - steps_dir {steps_dir}")
                 steps = steps_dir.name.replace("steps=", "")
                 if not all([c.isdecimal() for c in steps]):
                     continue
-                steps = int(steps)
-                submodelSteps.append(SubModelSteps(steps))
 
-            if len(submodelSteps) == 0:
+                oneSteps = SubModelSteps(int(steps))
+                submodel.submodelSteps.append(oneSteps)
+
+                _load_imagesets_for_submodelsteps(model, submodel, oneSteps, steps_dir)
+
+            if len(submodel.submodelSteps) == 0:
                 print(f"    * no steps directories, skipping submodel")
                 continue
 
-            submodel = SubModel(seed=modelSeed, batch=modelBatch, learningRate=modelLR, extras=extras)
-            submodel.submodelSteps.extend(submodelSteps)
-            submodels.append(submodel)
-
-        if len(submodels) == 0:
+        if len(model.submodels) == 0:
             print(f"  * no submodels, skipping model")
             continue
 
-        model = Model(modelName, modelBase)
         res.append(model)
-        model.submodels.extend(submodels)
         
     return res
+
+# .../portrait photo of alexhin/sampler=dpm++1:50,cfg=7
+def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps: SubModelSteps, steps_dir: Path):
+    for prompt_dir in subdirs(steps_dir):
+        prompt = prompt_dir.name
+        for sampler_cfg_dir in subdirs(prompt_dir):
+            kv_pairs_str = sampler_cfg_dir.name.split(",")
+            kv_pairs: Dict[str, str] = {}
+            for kv_pair in kv_pairs_str:
+                key, val = kv_pair.split("=")
+                kv_pairs[key] = val
+
+            sampler = kv_pairs["sampler"]
+            cfg = int(kv_pairs["cfg"])
+
+            imageSet = ImageSet(model=model, submodel=submodel, submodelSteps=oneSteps,
+                                prompt=prompt, samplerStr=sampler, cfg=cfg)
+            oneSteps.imageSets.append(imageSet)
+
+            for image_path in sampler_cfg_dir.iterdir():
+                if not image_path.suffix == ".png":
+                    continue
+                seed = int(image_path.stem)
+
+                image = Image(imageSet, seed)
+                imageSet.images.append(image)

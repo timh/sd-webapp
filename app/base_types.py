@@ -4,10 +4,11 @@ from typing import Iterable, Dict, Set, List
 import inspect
 
 class BaseModel:
-    def to_dict(self) -> Dict[str, str]:
-        attributes = sorted(self.__dict__.keys()) 
+    def to_dict(self, attributes: Iterable[str] = None) -> Dict[str, any]:
+        if attributes is None:
+            attributes = sorted(self.__dict__.keys()) 
 
-        res: Dict[str, str] = {}
+        res: Dict[str, any] = {}
         for attr in attributes:
             value = getattr(self, attr)
             if isinstance(value, set):
@@ -38,15 +39,15 @@ class BaseModel:
         
         return ",".join(res)
 
+class ImageSet: pass
 class SubModelSteps(BaseModel):
     steps: int
+    imageSets: List[ImageSet]
 
     def __init__(self, steps: int):
         self.steps = steps
+        self.imageSets = list()
     
-    def to_dict(self):
-        return self.steps
-
 class SubModel(BaseModel):
     submodelStr: str
     seed: int
@@ -89,7 +90,6 @@ class Model(BaseModel):
             res += f"+{self.base}"
         return res
 
-class ImageSet: pass
 class Image(BaseModel):
     imageset: ImageSet
     seed: int
@@ -100,8 +100,15 @@ class Image(BaseModel):
 
     def relpath(self) -> Path:
         png = f"{self.seed:010}.png"
-        return self.imageset.relpath().joinpath(png)
+        return Path(self.imageset.relpath(), png)
 
+    def to_dict(self) -> Dict[str, any]:
+        attributes = set(self.__dict__.keys())
+        attributes.remove("imageset")
+        res = super().to_dict(sorted(attributes))
+        res['relpath'] = str(self.relpath())
+        return res
+    
 class ImageSet(BaseModel):
     model: Model
     submodel: SubModel
@@ -119,7 +126,6 @@ class ImageSet(BaseModel):
         self.samplerStr = samplerStr
         self.cfg = cfg
 
-        self.seeds = list()
         for seed in seeds:
             self.images.append(Image(self, seed))
         self.images = list()
@@ -127,3 +133,12 @@ class ImageSet(BaseModel):
     def relpath(self) -> Path:
         endStr = f"sampler={self.samplerStr},cfg={self.cfg}"
         return Path(self.model.get_key(), self.submodel.get_key(), self.submodelSteps.get_key(), self.prompt, endStr)
+
+    def to_dict(self) -> Dict[str, any]:
+        attributes = set(self.__dict__.keys())
+        attributes.remove("model")
+        attributes.remove("submodel")
+        attributes.remove("submodelSteps")
+        res = super().to_dict(sorted(attributes))
+        res['relpath'] = str(self.relpath())
+        return res
