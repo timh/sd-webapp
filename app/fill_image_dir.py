@@ -18,6 +18,7 @@ RE_SAMPLER = re.compile(r"([\w\+_]+)_(\d+),c(\d+)")
 RE_MODEL_STEPS = re.compile(r"^(.+)_(\d+)$")
 RE_MODEL_BATCH = re.compile(r"^(.+)-batch(\d+)(.*)$")
 RE_MODEL_LR = re.compile(r"^(.+)@([\d\.]+)(.*)$")
+RE_MODEL_LR2 = re.compile(r"^(.+)[\-|\+]([\d]+\.[\d]+e-[\d]+)(.*)$")
 RE_MODEL_SEED = re.compile(r"^(.+)_r(\d+)$")
 
 # image with non-default path
@@ -62,11 +63,16 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
         if match:
             modelBatch = int(match.group(2))
             modelName = match.group(1) + match.group(3)
-        
+
         match = RE_MODEL_LR.match(modelName)
         if match:
             modelLR = match.group(2)
             modelName = match.group(1) + match.group(3)
+        else:
+            match = RE_MODEL_LR2.match(modelName)
+            if match:
+                modelLR = match.group(2)
+                modelName = match.group(1) + match.group(3)
 
         match = RE_MODEL_STEPS.match(modelName)
         if match:
@@ -86,18 +92,22 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
             cfg = int(match.group(3))
 
         modelBase = ""
-        for base in ["-f222v", "-sd21", "-inpainting"]:
-            if base in modelName:
-                modelBase = base[1:]
-                modelName = modelName.replace(base, "")
+        for base in ["f222v", "f222", "sd21", "sd20", "inpainting"]:
+            for ch in ["-", "+"]:
+                substr = ch + base
+                if substr in modelName:
+                    modelBase = base
+                    modelName = modelName.replace(substr, "")
 
-        submodelExtras = modelName.split("-")
-        if len(submodelExtras) > 1:
-            modelName = submodelExtras[0]
-            submodelExtras = set(submodelExtras[1:])
-        else:
-            submodelExtras = set()
-        
+        submodelExtras = re.compile("[\-|\+]").split(modelName)
+        # submodelExtras = modelName.split("-")
+        if not modelName.startswith("stable"):
+            if len(submodelExtras) > 1:
+                modelName = submodelExtras[0]
+                submodelExtras = set(submodelExtras[1:])
+            else:
+                submodelExtras = set()
+
         if modelName in models:
             model = models[modelName]
         else:
@@ -119,14 +129,18 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
 if __name__ == "__main__":
     models: Dict[str, Model] = dict()
     submodels: Dict[str, SubModel] = dict()
-    images = get_images_submodels(Path("/home/tim/devel/outputs/alex12"), models, submodels)
 
-    for image in images:
-        new_path = IMAGE_DIR.joinpath(image.path())
-        new_path.parent.mkdir(exist_ok=True, parents=True)
-        if new_path.exists():
+    for subdir in Path("/home/tim/devel/outputs").iterdir():
+        if not Path(subdir, "filelist.txt").exists() or subdir.name == "app-images" or subdir.name.startswith("class_images"):
             continue
-        orig_path = image.src_path
-        print(f"{new_path} -> {orig_path}")
-        new_path.symlink_to(orig_path)
+        images = get_images_submodels(subdir, models, submodels)
+
+        for image in images:
+            new_path = IMAGE_DIR.joinpath(image.path())
+            new_path.parent.mkdir(exist_ok=True, parents=True)
+            if new_path.exists():
+                continue
+            orig_path = image.src_path
+            print(f"{new_path} -> {orig_path}")
+            new_path.symlink_to(orig_path)
 

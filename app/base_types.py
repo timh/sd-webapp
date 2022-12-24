@@ -16,6 +16,8 @@ class BaseModel:
             if isinstance(value, Iterable) and len(value) > 0 and isinstance(value[0], BaseModel):
                 value = [child.to_dict() for child in value]
             if not isinstance(value, list) and not isinstance(value, str) and not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, bool):
+                if attr == "model_path":
+                    continue
                 print(f"skip attribute {attr} value {value}")
                 continue
             res[attr] = value
@@ -23,9 +25,11 @@ class BaseModel:
         res["key"] = self.get_key()
         return res
     
-    def get_key(self) -> str:
+    def get_key(self, attributes: List[str] = None) -> str:
         res: List[str] = []
-        for attr in sorted(self.__dict__.keys()):
+        if attributes is None:
+            attributes = sorted(self.__dict__.keys())
+        for attr in attributes:
             value = getattr(self, attr)
 
             if isinstance(value, int) or isinstance(value, str):
@@ -95,7 +99,7 @@ class SubModel(BaseModel):
         res.append(f"LR={self.learningRate}")
         if self.extras:
             # extras come at end.
-            res.append(",".join(self.extras))
+            res.append(",".join(sorted(list(self.extras))))
         return ",".join(res)
 
     def image_path(self) -> Path:
@@ -171,6 +175,9 @@ class ImageSet(BaseModel):
         for seed in seeds:
             self.images.append(Image(self, seed))
         self.images = list()
+
+    def get_key(self) -> str:
+        return super().get_key(["prompt", "samplerStr", "cfg"])
 
     def path(self) -> Path:
         endStr = f"sampler={self.samplerStr},cfg={self.cfg}"

@@ -49,12 +49,12 @@ def _load_image_dict():
                         res[str(image.path())] = image
     return res
 
-@app.route('/models')
+@app.route('/api/models')
 def list_models():
     res = [model.to_dict() for model in _load_models()]
     return make_json(res)
 
-@app.route('/image')
+@app.route('/api/image')
 def get_image():
     path = request.args.get("path")
     if path is None:

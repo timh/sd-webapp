@@ -45,7 +45,7 @@
 
 .model_list .seed {
     grid-column: 5;
-    display: none;
+    /* display: none; */
 }
 
 .model_list .batch {

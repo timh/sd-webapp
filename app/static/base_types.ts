@@ -84,6 +84,7 @@ class SubModel {
     extras: Set<string>
     visible: boolean
     model: Model
+    canGenerate: boolean
 
     constructor(path: string, 
                  model: Model, submodelStr: string = "", seed: number = 0, batch: number = 1,
@@ -98,6 +99,7 @@ class SubModel {
         this.extras = extras
         this.visible = true
         this.submodelSteps = []
+        this.canGenerate = false
     }
 
     static from_json(model: Model, input: any): SubModel {
@@ -111,6 +113,9 @@ class SubModel {
         for (const oneSteps of input.submodelSteps) {
             const submodelSteps = SubModelSteps.from_json(res, oneSteps)
             res.submodelSteps.push(submodelSteps)
+            if (submodelSteps.canGenerate) {
+                res.canGenerate = true
+            }
         }
         return res
     }
@@ -122,6 +127,7 @@ class Model {
     base: string
     submodels: Array<SubModel>
     visible: boolean
+    canGenerate: boolean
 
     constructor(path: string, name: string, base: string) {
         this.path = path
@@ -129,12 +135,17 @@ class Model {
         this.base = base
         this.submodels = new Array()
         this.visible = true
+        this.canGenerate = false
     }
 
     static from_json(input: any): Model {
         const res = new Model(input.path, input.name, input.base)
         for (const submodelIn of input.submodels) {
-            res.submodels.push(SubModel.from_json(res, submodelIn))
+            const submodel = SubModel.from_json(res, submodelIn)
+            res.submodels.push(submodel)
+            if (submodel.canGenerate) {
+                res.canGenerate = true
+            }
         }
         return res
     }

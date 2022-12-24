@@ -13,6 +13,11 @@ const STORE_VIS_IMAGESET = new StoredVal('vis_imageSet', new Set<string>(), (sto
 
 var allModels: Array<Model>
 var allSubmodelStepsVisible: Map<string, SubModelSteps> = new Map()
+const urlParams = new Proxy(new URLSearchParams(window.location.search), {
+    get: (searchParams, prop) => searchParams.get(prop as string),
+});
+const paramFilterModels = ((urlParams as any).filter as string) || ""
+const paramOnlyGenerate = ((urlParams as any).gen) != undefined
 
 // (short) imageset keys that are visible.
 var allImageSetsVisible: Set<string> = new Set()
@@ -102,9 +107,17 @@ function renderModels() {
     }
 
     for (const [modelIdx, model] of allModels.entries()) {
+        if (paramFilterModels && !model.name.includes(paramFilterModels)) {
+            // HACK
+            continue
+        }
+        if (paramOnlyGenerate && !model.canGenerate) {
+            continue
+        }
         const modelClass = `model_${modelIdx}`
         for (const field of MODEL_FIELDS) {
-            const fieldElem = rootElem.appendChild(createElement("span", {class: field}, model[field].toString()))
+            const value = model[field].toString() + ((field == "name" && model.canGenerate) ? "*" : "")
+            const fieldElem = rootElem.appendChild(createElement("span", {class: field}, value))
             if (!model.visible) {
                 fieldElem.classList.add(DESELECTED)
             }
@@ -116,6 +129,9 @@ function renderModels() {
 
         for (const [submodelIdx, submodel] of model.submodels.entries()) {
             const submodelElems = new Array<HTMLElement>()
+            if (paramOnlyGenerate && !submodel.canGenerate) {
+                continue
+            }
 
             const submodelClass = `${modelClass}_${submodelIdx}`
             const extrasString = Array.from(submodel.extras).join(" ")
@@ -125,7 +141,7 @@ function renderModels() {
 
             for (const field of SUBMODEL_FIELDS) {
                 // console.log(`field = ${field}`)
-                const contents = submodel[field].toString()
+                const contents = submodel[field].toString() + ((field == "seed" && submodel.canGenerate) ? "*" : "")
                 if (contents != "") {
                     submodelElems.push(createElement("span", {class: field}, contents))
                 }
@@ -205,7 +221,8 @@ function renderImages(rootElem: HTMLElement) {
         }
         else {
             for (const image of images) {
-                const imageSrc = "/image?path=" + encodeURIComponent(image.path)
+                const imageSrc = "/image/" + encodeURIComponent(image.path)
+
                 const spanElem = imagesElem.appendChild(createElement("span", {class: "image"}))
                 const thumbElem = spanElem.appendChild(createElement("img", {class: "thumbnail"})) as HTMLImageElement
                 thumbElem.src = imageSrc
@@ -225,7 +242,7 @@ function renderImages(rootElem: HTMLElement) {
 }
 
 async function loadModels() {
-    var resp = await fetch("/models")
+    var resp = await fetch("/api/models")
 
     const data = await resp.text()
     if (resp.ok) {
