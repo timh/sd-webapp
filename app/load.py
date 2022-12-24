@@ -180,17 +180,20 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
             sampler = kv_pairs["sampler"]
             cfg = int(kv_pairs["cfg"])
 
-            imageSet = ImageSet(model=model, submodel=submodel, submodelSteps=oneSteps,
+            imageset = ImageSet(model=model, submodel=submodel, submodelSteps=oneSteps,
                                 prompt=prompt, samplerStr=sampler, cfg=cfg)
-            oneSteps.imageSets.append(imageSet)
+            oneSteps.imageSets.append(imageset)
 
             for image_path in sampler_cfg_dir.iterdir():
+                if image_path.name == ".hide":
+                    imageset.hide = True
+                    continue
                 if not image_path.suffix == ".png":
                     continue
                 seed = int(image_path.stem)
 
-                image = Image(imageSet, seed)
-                imageSet.images.append(image)
+                image = Image(imageset, seed)
+                imageset.images.append(image)
 
 def sort_models(models: Iterable[Model]) -> Iterable[Model]:
     for model in models:

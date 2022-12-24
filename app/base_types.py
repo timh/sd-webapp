@@ -163,6 +163,7 @@ class ImageSet(BaseModel):
     cfg: int
     prompt: str
     images: List[Image]
+    hide: bool
 
     def __init__(self, model: Model, submodel: SubModel, submodelSteps: SubModelSteps, prompt: str, samplerStr: str, cfg: int, seeds: Iterable[int] = []):
         self.model = model
@@ -171,6 +172,7 @@ class ImageSet(BaseModel):
         self.prompt = prompt
         self.samplerStr = samplerStr
         self.cfg = cfg
+        self.hide = False
 
         for seed in seeds:
             self.images.append(Image(self, seed))

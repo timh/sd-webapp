@@ -9,18 +9,22 @@ const DESELECTED = "deselected"
 const STORE_VIS_MODEL = new StoredVal('vis_model', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 const STORE_VIS_SUBMODEL = new StoredVal('vis_submodel', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 const STORE_VIS_SUBMODEL_STEPS = new StoredVal('vis_submodelSteps', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
-const STORE_VIS_IMAGESET = new StoredVal('vis_imageSet', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_PROMPT = new StoredVal('vis_prompt', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_SAMPLER = new StoredVal('vis_sampler', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_CFG = new StoredVal('vis_cfg', new Set<number>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 
 var allModels: Array<Model>
 var allSubmodelStepsVisible: Map<string, SubModelSteps> = new Map()
+var respectHide = true
 const urlParams = new Proxy(new URLSearchParams(window.location.search), {
     get: (searchParams, prop) => searchParams.get(prop as string),
 });
 const paramFilterModels = ((urlParams as any).filter as string) || ""
 const paramOnlyGenerate = ((urlParams as any).gen) != undefined
 
-// (short) imageset keys that are visible.
-var allImageSetsVisible: Set<string> = new Set()
+const allPromptsVisible: Set<string> = new Set()
+const allSamplersVisible: Set<string> = new Set()
+const allCfgsVisible: Set<number> = new Set()
 
 function loadVisibility() {
     const visModel = STORE_VIS_MODEL.get()
@@ -38,9 +42,14 @@ function loadVisibility() {
         }
     }
 
-    const visImageSet = STORE_VIS_IMAGESET.get()
-    for (const imagesetKey of visImageSet) {
-        allImageSetsVisible.add(imagesetKey)
+    for (const prompt of STORE_VIS_PROMPT.get()) {
+        allPromptsVisible.add(prompt)
+    }
+    for (const sampler of STORE_VIS_SAMPLER.get()) {
+        allSamplersVisible.add(sampler)
+    }
+    for (const cfg of STORE_VIS_CFG.get()) {
+        allCfgsVisible.add(cfg)
     }
 }
 
@@ -85,16 +94,16 @@ function toggleVisSubmodelSteps(submodelSteps: SubModelSteps) {
     renderModels()
 }
 
-function toggleVisImageSet(imagesetKey: string) {
-    if (allImageSetsVisible.has(imagesetKey)) {
-        allImageSetsVisible.delete(imagesetKey)
-        STORE_VIS_IMAGESET.get().delete(imagesetKey)
+function toggleVisSimple<T>(value: T, visibleSet: Set<T>, store: StoredVal<Set<T>>) {
+    if (visibleSet.has(value)) {
+        visibleSet.delete(value)
+        store.get().delete(value)
     }
     else {
-        allImageSetsVisible.add(imagesetKey)
-        STORE_VIS_IMAGESET.get().add(imagesetKey)
+        visibleSet.add(value)
+        store.get().add(value)
     }
-    STORE_VIS_IMAGESET.save()
+    store.save()
     renderModels()
 }
 
@@ -188,8 +197,11 @@ function renderImages(rootElem: HTMLElement) {
         imagesElem.removeChild(child)
     }
 
-    // imageset key -> images that match it.
-    const isetKey2Images = new Map<string, Array<Image>>()
+    const allPrompts = new Map<string, number>()
+    const allSamplers = new Map<string, number>()
+    const allCfgs = new Map<number, number>()
+    const visibleImages = new Array<Image>()
+
     for (const stepsPath of sort(allSubmodelStepsVisible.keys())) {
         const oneSteps = allSubmodelStepsVisible.get(stepsPath)!
         if (!oneSteps.visible || !oneSteps.submodel.visible || !oneSteps.submodel.model.visible) {
@@ -197,47 +209,77 @@ function renderImages(rootElem: HTMLElement) {
         }
 
         for (const imageset of oneSteps.imagesets) {
-            const key = imageset.key
-            if (!isetKey2Images.has(key)) {
-                isetKey2Images.set(key, new Array())
+            const prompt = imageset.prompt
+            if (respectHide && imageset.hide) {
+                continue
             }
-            const images = isetKey2Images.get(key)!
+            if (!allPrompts.has(imageset.prompt)) {
+                allPrompts.set(imageset.prompt, 0)
+            }
+            allPrompts.set(imageset.prompt, allPrompts.get(imageset.prompt)! + imageset.images.length)
+            if (!allPromptsVisible.has(imageset.prompt)) {
+                continue
+            }
+
+            if (!allSamplers.has(imageset.samplerStr)) {
+                allSamplers.set(imageset.samplerStr, 0)
+            }
+            allSamplers.set(imageset.samplerStr, allSamplers.get(imageset.samplerStr)! + imageset.images.length)
+            if (!allSamplersVisible.has(imageset.samplerStr)) {
+                continue
+            }
+
+            if (!allCfgs.has(imageset.cfg)) {
+                allCfgs.set(imageset.cfg, 0)
+            }
+            allCfgs.set(imageset.cfg, allCfgs.get(imageset.cfg)! + imageset.images.length)
+            if (!allCfgsVisible.has(imageset.cfg)) {
+                continue
+            }
+
             for (const image of imageset.images) {
-                images.push(image)
+                visibleImages.push(image)
             }
         }
     }
 
-    for (const imagesetKey of sort(isetKey2Images.keys())) {
-        const isVisible = allImageSetsVisible.has(imagesetKey)
-        const images = isetKey2Images.get(imagesetKey)!
-        const imagesetStr = imagesetKey + ` (${images.length.toString()} images)`
-
-        const imagesetSpan = createElement("span", {class: "imagesetChoice"}, imagesetStr)
-        rootElem.appendChild(imagesetSpan)
-
-        if (!isVisible) {
-            imagesetSpan.classList.add("deselected")
-        }
-        else {
-            for (const image of images) {
-                const imageSrc = "/image/" + encodeURIComponent(image.path)
-
-                const spanElem = imagesElem.appendChild(createElement("span", {class: "image"}))
-                const thumbElem = spanElem.appendChild(createElement("img", {class: "thumbnail"})) as HTMLImageElement
-                thumbElem.src = imageSrc
-
-                const detailsElem = spanElem.appendChild(createElement("span", {class: "details"}))
-                detailsElem.appendChild(createElement("div", {class: "attributes"}, image.path))
-                const fullsizeElem = detailsElem.appendChild(createElement("img", {class: "fullsize"})) as HTMLImageElement
-                fullsizeElem.src = imageSrc
-            }
-        }
-
-        imagesetSpan.onclick = function(ev) {
-            toggleVisImageSet(imagesetKey)
+    function renderChoice<T>(choice: T, visibleSet: Set<T>, store: StoredVal<Set<T>>, numAll: number) {
+        const choiceStr = choice + ` (${numAll.toString()} images)`
+        const choiceSpan = createElement("span", {class: "choice"}, choiceStr)
+        rootElem.appendChild(choiceSpan)
+        choiceSpan.onclick = function(ev) {
+            toggleVisSimple(choice, visibleSet, store)
             return false
         }
+
+        if (!visibleSet.has(choice)) {
+            choiceSpan.classList.add("deselected")
+        }
+    }
+
+    for (const prompt of sort(allPrompts.keys())) {
+        renderChoice(prompt, allPromptsVisible, STORE_VIS_PROMPT, allPrompts.get(prompt)!)
+    }
+
+    for (const sampler of sort(allSamplers.keys())) {
+        renderChoice(sampler, allSamplersVisible, STORE_VIS_SAMPLER, allSamplers.get(sampler)!)
+    }
+
+    for (const cfg of sort(allCfgs.keys())) {
+        renderChoice(cfg, allCfgsVisible, STORE_VIS_CFG, allCfgs.get(cfg)!)
+    }
+
+    for (const image of visibleImages) {
+        const imageSrc = "/image/" + encodeURIComponent(image.path)
+
+        const spanElem = imagesElem.appendChild(createElement("span", {class: "image"}))
+        const thumbElem = spanElem.appendChild(createElement("img", {class: "thumbnail"})) as HTMLImageElement
+        thumbElem.src = imageSrc
+
+        const detailsElem = spanElem.appendChild(createElement("span", {class: "details"}))
+        detailsElem.appendChild(createElement("div", {class: "attributes"}, image.path))
+        const fullsizeElem = detailsElem.appendChild(createElement("img", {class: "fullsize"})) as HTMLImageElement
+        fullsizeElem.src = imageSrc
     }
 }
 
@@ -253,11 +295,22 @@ async function loadModels() {
             allModels.push(model)
         }
     }
-
     loadVisibility()
 }
 
 loadModels().then((val2) => {
-    console.log("fetched image sets / models")
+    console.log("fetched models")
     renderModels()
+    document.onkeydown = (ev) => {
+        if (ev.code == "KeyH") {
+            respectHide = !respectHide
+            renderModels()
+            return false
+        }
+        else if (ev.code == "KeyR") {
+            loadModels().then((_val) => renderModels())
+            return false
+        }
+        return true
+    }
 })

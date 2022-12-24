@@ -23,6 +23,8 @@ class ImageSet {
     images: Array<Image>
     visible: boolean
 
+    hide: boolean
+
     submodelSteps: SubModelSteps
 
     constructor(submodelSteps: SubModelSteps, prompt: string, samplerStr: string, cfg: number, path: string, key: string) {
@@ -34,10 +36,12 @@ class ImageSet {
         this.key = key
         this.images = new Array()
         this.visible = false
+        this.hide = false
     }
 
     static from_json(submodelSteps: SubModelSteps, input: any): ImageSet {
         const res = new ImageSet(submodelSteps, input.prompt, input.samplerStr, input.cfg, input.path, input.key)
+        res.hide = input.hide
         for (const image of input.images) {
             res.images.push(Image.from_json(res, image))
         }
