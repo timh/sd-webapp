@@ -65,7 +65,7 @@ class SubModelSteps(BaseModel):
         return Path(self.submodel.image_path(), self.get_key())
 
     def get_key(self) -> str:
-        return f"steps={self.steps}"
+        return f"steps={self.steps:05}"
 
     def to_dict(self) -> Dict[str, any]:
         attributes = set(self.__dict__.keys())
@@ -179,10 +179,12 @@ class ImageSet(BaseModel):
         self.images = list()
 
     def get_key(self) -> str:
-        return super().get_key(["prompt", "samplerStr", "cfg"])
+        res = super().get_key(["prompt", "samplerStr"])
+        res += f",cfg={self.cfg:02}"
+        return res
 
     def path(self) -> Path:
-        endStr = f"sampler={self.samplerStr},cfg={self.cfg}"
+        endStr = f"sampler={self.samplerStr},cfg={self.cfg:02}"
         return Path(self.model.get_key(), self.submodel.get_key(), self.submodelSteps.get_key(), self.prompt, endStr)
 
     def to_dict(self) -> Dict[str, any]:

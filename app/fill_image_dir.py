@@ -5,6 +5,7 @@ from typing import List, Dict
 from base_types import ImageSet, Image, SubModelSteps, SubModel, Model
 
 OUTPUTS_DIR = Path("/home/tim/devel/outputs")
+APP_DIR = Path(OUTPUTS_DIR, "app-images")
 
 RE_MODEL_PARTS = re.compile(r"([^\/]+)--(.+)--(.+)")
 RE_FILENAME = re.compile(r"\d+\.(\d+)\.png")
@@ -92,7 +93,7 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
             cfg = int(match.group(3))
 
         modelBase = ""
-        for base in ["f222v", "f222", "sd21", "sd20", "inpainting"]:
+        for base in ["f222v", "f222", "sd21", "sd20", "sd15", "inpainting"]:
             for ch in ["-", "+"]:
                 substr = ch + base
                 if substr in modelName:
@@ -141,6 +142,8 @@ if __name__ == "__main__":
             if new_path.exists():
                 continue
             orig_path = image.src_path
-            print(f"{new_path} -> {orig_path}")
+            print(f"{new_path.relative_to(APP_DIR)} ->")
+            print(f"  {orig_path.relative_to(OUTPUTS_DIR)}")
             new_path.symlink_to(orig_path)
+        
 

@@ -177,7 +177,7 @@ function renderModels() {
                 if (!oneSteps.visible || !submodel.visible || !model.visible) {
                     stepElem.classList.add(DESELECTED)
                 }
-                console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path}`)
+                console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path} oneSteps.imagesets.length = ${oneSteps.imagesets.length}`)
                 stepElem.onclick = function(ev) {
                     toggleVisSubmodelSteps(oneSteps)
                     return false
@@ -284,6 +284,7 @@ function renderImages(rootElem: HTMLElement) {
 }
 
 async function loadModels() {
+    document.getElementById("loading")!.className = ""
     var resp = await fetch("/api/models")
 
     const data = await resp.text()
@@ -296,13 +297,17 @@ async function loadModels() {
         }
     }
     loadVisibility()
+    document.getElementById("loading")!.className = "hidden"
 }
 
 loadModels().then((val2) => {
     console.log("fetched models")
     renderModels()
     document.onkeydown = (ev) => {
-        if (ev.code == "KeyH") {
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) {
+            // ignore.
+        }
+        else if (ev.code == "KeyH") {
             respectHide = !respectHide
             renderModels()
             return false
