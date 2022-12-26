@@ -177,7 +177,7 @@ function renderModels() {
                 if (!oneSteps.visible || !submodel.visible || !model.visible) {
                     stepElem.classList.add(DESELECTED)
                 }
-                console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path} oneSteps.imagesets.length = ${oneSteps.imagesets.length}`)
+                // console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path} oneSteps.imagesets.length = ${oneSteps.imagesets.length}`)
                 stepElem.onclick = function(ev) {
                     toggleVisSubmodelSteps(oneSteps)
                     return false
@@ -204,7 +204,15 @@ function renderImages(rootElem: HTMLElement) {
 
     for (const stepsPath of sort(allSubmodelStepsVisible.keys())) {
         const oneSteps = allSubmodelStepsVisible.get(stepsPath)!
-        if (!oneSteps.visible || !oneSteps.submodel.visible || !oneSteps.submodel.model.visible) {
+        const submodel = oneSteps.submodel
+        const model = submodel.model
+        if (paramFilterModels && !model.name.includes(paramFilterModels)) {
+            continue
+        }
+        if (paramOnlyGenerate && !model.canGenerate) {
+            continue
+        }
+        if (!oneSteps.visible || !submodel.visible || !model.visible) {
             continue
         }
 
