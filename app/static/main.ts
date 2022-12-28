@@ -1,9 +1,7 @@
-import { Model, SubModel, SubModelSteps, ImageSet, Image } from "./base_types.js"
+import { Model, SubModel, SubModelSteps, BaseModel, ImageSet, Image, MODEL_FIELDS, SUBMODEL_FIELDS } from "./base_types.js"
 import { sort, createElement } from "./util.js"
 import { StoredVal } from "./storage.js"
 
-const MODEL_FIELDS = ["name", "base"]
-const SUBMODEL_FIELDS = ["submodelStr", "seed", "batch", "learningRate"]
 const DESELECTED = "deselected"
 
 const STORE_VIS_MODEL = new StoredVal('vis_model', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
@@ -22,10 +20,8 @@ const urlParams = new Proxy(new URLSearchParams(window.location.search), {
 const paramFilterModels = ((urlParams as any).filter as string) || ""
 const paramOnlyGenerate = ((urlParams as any).gen) != undefined
 
-const allPromptsVisible: Set<string> = new Set()
-const allSamplersVisible: Set<string> = new Set()
-const allCfgsVisible: Set<number> = new Set()
-
+// on load, set model, submodel, submodelsteps, prompt, sampler, cfg, resolution visibility
+// from local storage.
 function loadVisibility() {
     const visModel = STORE_VIS_MODEL.get()
     const visSubmodel = STORE_VIS_SUBMODEL.get()
@@ -41,60 +37,22 @@ function loadVisibility() {
             }
         }
     }
-
-    for (const prompt of STORE_VIS_PROMPT.get()) {
-        allPromptsVisible.add(prompt)
-    }
-    for (const sampler of STORE_VIS_SAMPLER.get()) {
-        allSamplersVisible.add(sampler)
-    }
-    for (const cfg of STORE_VIS_CFG.get()) {
-        allCfgsVisible.add(cfg)
-    }
 }
 
-function toggleVisModel(model: Model) {
+function toggleVisModel<T extends BaseModel>(model: BaseModel, store: StoredVal<Set<string>>) {
     model.visible = !model.visible
-    console.log(`toggle model ${model.name} to ${model.visible}`)
+    console.log(`toggle ${model.path} to ${model.visible}`)
     if (model.visible) {
-        STORE_VIS_MODEL.get().add(model.path)
+        store.get().add(model.path)
     }
     else {
-        STORE_VIS_MODEL.get().delete(model.path)
+        store.get().delete(model.path)
     }
-    STORE_VIS_MODEL.save()
+    store.save()
     renderModels()
 }
 
-function toggleVisSubmodel(submodel: SubModel) {
-    submodel.visible = !submodel.visible
-    console.log(`toggle submodel ${submodel.submodelStr} to ${submodel.visible}`)
-    if (submodel.visible) {
-        STORE_VIS_SUBMODEL.get().add(submodel.path)
-    }
-    else {
-        STORE_VIS_SUBMODEL.get().delete(submodel.path)
-    }
-    STORE_VIS_SUBMODEL.save()
-    renderModels()
-}
-
-function toggleVisSubmodelSteps(submodelSteps: SubModelSteps) {
-    submodelSteps.visible = !submodelSteps.visible
-    console.log(`toggle submodel steps to ${!submodelSteps.visible}; path = ${submodelSteps.path}`)
-    if (submodelSteps.visible) {
-        allSubmodelStepsVisible.set(submodelSteps.path, submodelSteps)
-        STORE_VIS_SUBMODEL_STEPS.get().add(submodelSteps.path)
-    }
-    else {
-        allSubmodelStepsVisible.delete(submodelSteps.path)
-        STORE_VIS_SUBMODEL_STEPS.get().delete(submodelSteps.path)
-    }
-    STORE_VIS_SUBMODEL_STEPS.save()
-    renderModels()
-}
-
-function toggleVisSimple<T>(value: T, visibleSet: Set<T>, store: StoredVal<Set<T>>) {
+function toggleVisAttribute<T>(value: T, visibleSet: Set<T>, store: StoredVal<Set<T>>) {
     if (visibleSet.has(value)) {
         visibleSet.delete(value)
         store.get().delete(value)
@@ -131,7 +89,7 @@ function renderModels() {
                 fieldElem.classList.add(DESELECTED)
             }
             fieldElem.onclick = function(ev) { 
-                toggleVisModel(model)
+                toggleVisModel(model, STORE_VIS_MODEL)
                 return false
             }
         }
@@ -162,7 +120,7 @@ function renderModels() {
                 }
                 rootElem.appendChild(elem)
                 elem.onclick = function(ev) {
-                    toggleVisSubmodel(submodel)
+                    toggleVisModel(submodel, STORE_VIS_SUBMODEL)
                     return false
                 }
             }
@@ -179,7 +137,7 @@ function renderModels() {
                 }
                 // console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path} oneSteps.imagesets.length = ${oneSteps.imagesets.length}`)
                 stepElem.onclick = function(ev) {
-                    toggleVisSubmodelSteps(oneSteps)
+                    toggleVisModel(oneSteps, STORE_VIS_SUBMODEL_STEPS)
                     return false
                 }
             }
@@ -196,6 +154,11 @@ function renderImages(rootElem: HTMLElement) {
     for (const child of Array.from(imagesElem.children)) {
         imagesElem.removeChild(child)
     }
+
+    const allPromptsVisible = STORE_VIS_PROMPT.get()
+    const allSamplersVisible = STORE_VIS_SAMPLER.get()
+    const allCfgsVisible = STORE_VIS_CFG.get()
+    const allResolutionsVisible = STORE_VIS_RESOLUTION.get()
 
     const allPrompts = new Map<string, number>()
     const allSamplers = new Map<string, number>()
@@ -256,7 +219,7 @@ function renderImages(rootElem: HTMLElement) {
         const choiceSpan = createElement("span", {class: "choice"}, choiceStr)
         rootElem.appendChild(choiceSpan)
         choiceSpan.onclick = function(ev) {
-            toggleVisSimple(choice, visibleSet, store)
+            toggleVisAttribute(choice, visibleSet, store)
             return false
         }
 
@@ -308,7 +271,7 @@ async function loadModels() {
     document.getElementById("loading")!.className = "hidden"
 }
 
-loadModels().then((val2) => {
+loadModels().then((_val) => {
     console.log("fetched models")
     renderModels()
     document.onkeydown = (ev) => {

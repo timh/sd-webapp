@@ -1,3 +1,6 @@
+const MODEL_FIELDS = ["name", "base"]
+const SUBMODEL_FIELDS = ["submodelStr", "seed", "batch", "learningRate"]
+
 class Image {
     seed: number
     path: string
@@ -49,21 +52,25 @@ class ImageSet {
     }
 }
 
-class SubModelSteps {
+class BaseModel {
     path: string
+    visible: boolean
+    constructor(path: string) {
+        this.path = path
+        this.visible = false
+    }
+}
+
+class SubModelSteps extends BaseModel {
     submodel: SubModel
     steps: number
-    visible: boolean
-    rendered: boolean
     imagesets: Array<ImageSet>
     canGenerate: boolean
 
     constructor(path: string, submodel: SubModel, steps: number, canGenerate: boolean) {
-        this.path = path
+        super(path)
         this.submodel = submodel
         this.steps = steps
-        this.visible = false
-        this.rendered = false
         this.imagesets = new Array()
         this.canGenerate = canGenerate
     }
@@ -78,15 +85,13 @@ class SubModelSteps {
     }
 }
 
-class SubModel {
-    path: string
+class SubModel extends BaseModel {
     submodelStr: string
     seed: number
     submodelSteps: Array<SubModelSteps>
     batch: number
     learningRate: string
     extras: Set<string>
-    visible: boolean
     model: Model
     canGenerate: boolean
 
@@ -94,14 +99,14 @@ class SubModel {
                  model: Model, submodelStr: string = "", seed: number = 0, batch: number = 1,
                  learningRate: string = "",
                  extras: Set<string> = new Set()) {
-        this.path = path
+        super(path)
+        this.visible = true
         this.model = model
         this.submodelStr = submodelStr
         this.seed = seed
         this.batch = batch
         this.learningRate = learningRate
         this.extras = extras
-        this.visible = true
         this.submodelSteps = []
         this.canGenerate = false
     }
@@ -125,20 +130,19 @@ class SubModel {
     }
 }
 
-class Model {
-    path: string
+class Model extends BaseModel {
     name: string
     base: string
     submodels: Array<SubModel>
-    visible: boolean
     canGenerate: boolean
 
     constructor(path: string, name: string, base: string) {
+        super(path)
+        this.visible = true
         this.path = path
         this.name = name
         this.base = base
         this.submodels = new Array()
-        this.visible = true
         this.canGenerate = false
     }
 
@@ -155,4 +159,5 @@ class Model {
     }
 }
     
-export { SubModelSteps, SubModel, Model, ImageSet, Image }
+export { SubModelSteps, SubModel, Model, BaseModel, ImageSet, Image,
+         MODEL_FIELDS, SUBMODEL_FIELDS }
