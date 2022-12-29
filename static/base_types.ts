@@ -69,6 +69,7 @@ class SubModelSteps extends BaseModel {
 
     constructor(path: string, submodel: SubModel, steps: number, canGenerate: boolean) {
         super(path)
+        this.visible = false
         this.submodel = submodel
         this.steps = steps
         this.imagesets = new Array()

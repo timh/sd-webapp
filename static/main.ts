@@ -17,8 +17,8 @@ var respectHide = true
 const urlParams = new Proxy(new URLSearchParams(window.location.search), {
     get: (searchParams, prop) => searchParams.get(prop as string),
 });
-const paramFilterModels = ((urlParams as any).filter as string) || ""
-const paramOnlyGenerate = ((urlParams as any).gen) != undefined
+var paramFilterModels = ((urlParams as any).filter as string) || ""
+var paramOnlyGenerate = ((urlParams as any).gen) != undefined
 
 // on load, set model, submodel, submodelsteps, prompt, sampler, cfg, resolution visibility
 // from local storage.
@@ -272,6 +272,23 @@ async function loadModels() {
 }
 
 loadModels().then((_val) => {
+    const updateUrl = function() {
+        const searchParams = new URLSearchParams(window.location.search)
+        if (paramFilterModels) {
+            searchParams.set("filter", paramFilterModels)
+        }
+        else {
+            searchParams.delete("filter")
+        }
+        if (paramOnlyGenerate) {
+            searchParams.set("gen", "")
+        }
+        else {
+            searchParams.delete("gen")
+        }
+        window.location.search = searchParams.toString()
+    }
+
     console.log("fetched models")
     renderModels()
     document.onkeydown = (ev) => {
@@ -287,6 +304,12 @@ loadModels().then((_val) => {
             loadModels().then((_val) => renderModels())
             return false
         }
+        else if (ev.code == "KeyG") {
+            paramOnlyGenerate = !paramOnlyGenerate
+            updateUrl()
+            loadModels().then((_val) => renderModels())
+        }
+        window.location
         return true
     }
 })

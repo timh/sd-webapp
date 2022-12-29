@@ -7,15 +7,12 @@ from base_types import ImageSet, Image, SubModelSteps, SubModel, Model
 OUTPUTS_DIR = Path("/home/tim/devel/outputs")
 APP_DIR = Path(OUTPUTS_DIR, "app-images")
 
-RE_MODEL_PARTS = re.compile(r"([^\/]+)--(.+)--(.+)")
+RE_MODEL_PARTS = re.compile(r"([^\/]+)--(.+)--(.+)$")
 RE_FILENAME = re.compile(r"\d+\.(\d+)\.png")
-RE_SAMPLER = re.compile(r"([\w\+_]+)_(\d+),c(\d+)")
-
-# alex44-everydream-e01_00440
-# output_alex22_768-sd21@4.0_3300
-#RE_MODEL = re.compile(r"^([\w\d_\.\-\+]+)_r(\d+)_(\d+)$")
-#RE_MODEL_EVERYDREAM = re.compile(r"^([\w\d@_\-\+\.]+)_(\d+)$")
-
+RE_SETTINGS_SAMPLER = re.compile(r"([\w\d\+_]+)_(\d+)")
+RE_SETTINGS_CFG = re.compile(r"c(\d+)")
+RE_SETTINGS_WIDTH = re.compile(r"width(\d+)")
+RE_SETTINGS_HEIGHT = re.compile(r"height(\d+)")
 RE_MODEL_STEPS = re.compile(r"^(.+)_(\d+)$")
 RE_MODEL_BATCH = re.compile(r"^(.+)-batch(\d+)(.*)$")
 RE_MODEL_LR = re.compile(r"^(.+)@([\d\.]+)(.*)$")
@@ -58,7 +55,7 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
         modelBatch = 1
         modelLR = ""
         prompt = match.group(2)
-        samplerCfg = match.group(3)
+        settings = match.group(3)
 
         match = RE_MODEL_BATCH.match(modelName)
         if match:
@@ -87,13 +84,28 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
         
         samplerStr = ""
         cfg = 0
-        match = RE_SAMPLER.match(samplerCfg)
-        if match:
-            samplerStr = match.group(1) + ":" + match.group(2)
-            cfg = int(match.group(3))
+        width, height = 512, 512
+        for setting in settings.split(","):
+            match = RE_SETTINGS_SAMPLER.match(setting)
+            if match:
+                samplerStr = match.group(1) + ":" + match.group(2)
+                continue
+            match = RE_SETTINGS_CFG.match(setting)
+            if match:
+                cfg = int(match.group(1))
+                continue
+            match = RE_SETTINGS_WIDTH.match(setting)
+            if match:
+                width = int(match.group(1))
+                continue
+            match = RE_SETTINGS_HEIGHT.match(setting)
+            if match:
+                height = int(match.group(1))
+                continue
+            print(f"unknown setting {setting} for subdir {subdir}")
 
         modelBase = ""
-        for base in ["f222v", "f222", "sd21", "sd20", "sd15", "inpainting"]:
+        for base in ["f222v", "f222", "sd21", "sd20", "sd15", "inpainting", "hassanblend", "ppp"]:
             for ch in ["-", "+"]:
                 substr = ch + base
                 if substr in modelName:
@@ -122,7 +134,7 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
         submodelSteps = SubModelSteps(submodel=submodel, steps=modelSteps_int)
         submodel.submodelSteps.append(submodelSteps)
 
-        imageset = ImageSet(model=model, submodel=submodel, submodelSteps=submodelSteps, prompt=prompt, samplerStr=samplerStr, cfg=cfg)
+        imageset = ImageSet(model=model, submodel=submodel, submodelSteps=submodelSteps, prompt=prompt, samplerStr=samplerStr, cfg=cfg, width=width, height=height)
         res.extend(add_images(subdir, imageset))
     
     return res

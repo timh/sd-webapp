@@ -194,6 +194,7 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
 
                 image = Image(imageset, seed)
                 imageset.images.append(image)
+            imageset.images = sorted(imageset.images, key=lambda image: image.seed)
 
 def sort_models(models: Iterable[Model]) -> Iterable[Model]:
     for model in models:
