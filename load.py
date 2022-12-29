@@ -52,12 +52,11 @@ def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
             modelSeed = int(match.group(3))
             modelLR = match.group(2)
 
-        if "-f222v" in modelName:
-            modelName = modelName.replace("-f222v", "")
-            modelBase = "f222v"
-        if "-sd15" in modelName:
-            modelName = modelName.replace("-sd15", "")
-            modelBase = "sd15"
+        for base in ["f222v", "sd15", "sd21", "hassanblend", "ppp"]:
+            substr = "-" + base
+            if substr in modelName:
+                modelName = modelName.replace(substr, "")
+                modelBase = base
         
         if not modelName.startswith("stable"):
             parts = modelName.split("-")
@@ -179,9 +178,15 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
 
             sampler = kv_pairs["sampler"]
             cfg = int(kv_pairs["cfg"])
+            width, height = 0, 0
+            if "width" in kv_pairs:
+                width = int(kv_pairs["width"])
+            if "height" in kv_pairs:
+                height = int(kv_pairs["height"])
 
             imageset = ImageSet(model=model, submodel=submodel, submodelSteps=oneSteps,
-                                prompt=prompt, samplerStr=sampler, cfg=cfg)
+                                prompt=prompt, samplerStr=sampler, cfg=cfg,
+                                width=width, height=height)
             oneSteps.imageSets.append(imageset)
 
             for image_path in sampler_cfg_dir.iterdir():
@@ -194,7 +199,6 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
 
                 image = Image(imageset, seed)
                 imageset.images.append(image)
-            imageset.images = sorted(imageset.images, key=lambda image: image.seed)
 
 def sort_models(models: Iterable[Model]) -> Iterable[Model]:
     for model in models:

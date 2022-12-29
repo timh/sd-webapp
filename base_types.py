@@ -162,16 +162,20 @@ class ImageSet(BaseModel):
     samplerStr: str
     cfg: int
     prompt: str
+    width: int
+    height: int
     images: List[Image]
     hide: bool
 
-    def __init__(self, model: Model, submodel: SubModel, submodelSteps: SubModelSteps, prompt: str, samplerStr: str, cfg: int, seeds: Iterable[int] = []):
+    def __init__(self, model: Model, submodel: SubModel, submodelSteps: SubModelSteps, prompt: str, samplerStr: str, cfg: int, width: int, height: int, seeds: Iterable[int] = []):
         self.model = model
         self.submodel = submodel
         self.submodelSteps = submodelSteps
         self.prompt = prompt
         self.samplerStr = samplerStr
         self.cfg = cfg
+        self.width = width
+        self.height = height
         self.hide = False
 
         for seed in seeds:
@@ -179,12 +183,12 @@ class ImageSet(BaseModel):
         self.images = list()
 
     def get_key(self) -> str:
-        res = super().get_key(["prompt", "samplerStr"])
+        res = super().get_key(["prompt", "width", "height", "samplerStr"])
         res += f",cfg={self.cfg:02}"
         return res
 
     def path(self) -> Path:
-        endStr = f"sampler={self.samplerStr},cfg={self.cfg:02}"
+        endStr = f"sampler={self.samplerStr},cfg={self.cfg:02},width={self.width},height={self.height}"
         return Path(self.model.get_key(), self.submodel.get_key(), self.submodelSteps.get_key(), self.prompt, endStr)
 
     def to_dict(self) -> Dict[str, any]:

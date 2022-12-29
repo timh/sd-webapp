@@ -10,6 +10,7 @@ const STORE_VIS_SUBMODEL_STEPS = new StoredVal('vis_submodelSteps', new Set<stri
 const STORE_VIS_PROMPT = new StoredVal('vis_prompt', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 const STORE_VIS_SAMPLER = new StoredVal('vis_sampler', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 const STORE_VIS_CFG = new StoredVal('vis_cfg', new Set<number>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
+const STORE_VIS_RESOLUTION = new StoredVal('vis_resolution', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 
 var allModels: Array<Model>
 var allSubmodelStepsVisible: Map<string, SubModelSteps> = new Map()
@@ -163,6 +164,7 @@ function renderImages(rootElem: HTMLElement) {
     const allPrompts = new Map<string, number>()
     const allSamplers = new Map<string, number>()
     const allCfgs = new Map<number, number>()
+    const allResolutions = new Map<string, number>()
     const visibleImages = new Array<Image>()
 
     for (const stepsPath of sort(allSubmodelStepsVisible.keys())) {
@@ -208,15 +210,26 @@ function renderImages(rootElem: HTMLElement) {
                 continue
             }
 
+            if (!allResolutions.has(imageset.resolution())) {
+                allResolutions.set(imageset.resolution(), 0)
+            }
+            allResolutions.set(imageset.resolution(), allResolutions.get(imageset.resolution())! + imageset.images.length)
+            if (!allResolutionsVisible.has(imageset.resolution())) {
+                continue
+            }
+
             for (const image of imageset.images) {
                 visibleImages.push(image)
             }
         }
     }
 
-    function renderChoice<T>(choice: T, visibleSet: Set<T>, store: StoredVal<Set<T>>, numAll: number) {
-        const choiceStr = choice + ` (${numAll.toString()} images)`
-        const choiceSpan = createElement("span", {class: "choice"}, choiceStr)
+    function renderChoice<T>(choice: T, visibleSet: Set<T>, store: StoredVal<Set<T>>, numAll: number, choiceStr: string = "") {
+        if (!choiceStr) {
+            choiceStr = "" + choice
+        }
+        const choiceDesc = choiceStr + ` (${numAll.toString()} images)`
+        const choiceSpan = createElement("span", {class: "choice"}, choiceDesc)
         rootElem.appendChild(choiceSpan)
         choiceSpan.onclick = function(ev) {
             toggleVisAttribute(choice, visibleSet, store)
@@ -237,7 +250,11 @@ function renderImages(rootElem: HTMLElement) {
     }
 
     for (const cfg of sort(allCfgs.keys())) {
-        renderChoice(cfg, allCfgsVisible, STORE_VIS_CFG, allCfgs.get(cfg)!)
+        renderChoice(cfg, allCfgsVisible, STORE_VIS_CFG, allCfgs.get(cfg)!, `cfg ${cfg}`)
+    }
+
+    for (const res of sort(allResolutions.keys())) {
+        renderChoice(res, allResolutionsVisible, STORE_VIS_RESOLUTION, allResolutions.get(res)!)
     }
 
     for (const image of visibleImages) {

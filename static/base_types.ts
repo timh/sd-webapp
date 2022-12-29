@@ -24,17 +24,21 @@ class ImageSet {
     path: string
     key: string
     images: Array<Image>
+    width: number
+    height: number
     visible: boolean
 
     hide: boolean
 
     submodelSteps: SubModelSteps
 
-    constructor(submodelSteps: SubModelSteps, prompt: string, samplerStr: string, cfg: number, path: string, key: string) {
+    constructor(submodelSteps: SubModelSteps, prompt: string, samplerStr: string, cfg: number, width: number, height: number, path: string, key: string) {
         this.submodelSteps = submodelSteps
         this.prompt = prompt
         this.samplerStr = samplerStr
         this.cfg = cfg
+        this.width = width
+        this.height = height
         this.path = path
         this.key = key
         this.images = new Array()
@@ -42,8 +46,12 @@ class ImageSet {
         this.hide = false
     }
 
+    resolution(): string {
+        return `${this.width}x${this.height}`
+    }
+
     static from_json(submodelSteps: SubModelSteps, input: any): ImageSet {
-        const res = new ImageSet(submodelSteps, input.prompt, input.samplerStr, input.cfg, input.path, input.key)
+        const res = new ImageSet(submodelSteps, input.prompt, input.samplerStr, input.cfg, input.width, input.height, input.path, input.key)
         res.hide = input.hide
         for (const image of input.images) {
             res.images.push(Image.from_json(res, image))
@@ -69,7 +77,6 @@ class SubModelSteps extends BaseModel {
 
     constructor(path: string, submodel: SubModel, steps: number, canGenerate: boolean) {
         super(path)
-        this.visible = false
         this.submodel = submodel
         this.steps = steps
         this.imagesets = new Array()
