@@ -74,20 +74,30 @@ class SubModelSteps extends BaseModel {
     steps: number
     imagesets: Array<ImageSet>
     canGenerate: boolean
+    hasImages: boolean
+    imagesetsFetched: boolean
 
-    constructor(path: string, submodel: SubModel, steps: number, canGenerate: boolean) {
+    constructor(path: string, submodel: SubModel, steps: number, canGenerate: boolean, hasImages: boolean) {
         super(path)
         this.submodel = submodel
         this.steps = steps
         this.imagesets = new Array()
         this.canGenerate = canGenerate
+        this.hasImages = hasImages
+        this.imagesetsFetched = false
+    }
+
+    imagesets_from_json(input: any) {
+        for (const imageset of input) {
+            const oneIS = ImageSet.from_json(this, imageset)
+            this.imagesets.push(oneIS)
+        }
     }
 
     static from_json(submodel: SubModel, input: any): SubModelSteps {
-        const res = new SubModelSteps(input.path, submodel, input.steps, input.canGenerate)
-        for (const imageset of input.imageSets) {
-            const oneIS = ImageSet.from_json(res, imageset)
-            res.imagesets.push(oneIS)
+        const res = new SubModelSteps(input.path, submodel, input.steps, input.canGenerate, input.hasImages)
+        if (input.imagesets) {
+            res.imagesets_from_json(input.imagesets)
         }
         return res
     }

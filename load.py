@@ -106,6 +106,11 @@ def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
     return res
 
 def list_models() -> List[Model]:
+    res = list_models_with_images()
+    res = add_generatable_models(res)
+    return sort_models(res)
+
+def list_models_with_images() -> List[Model]:
     res: List[Model] = list()
     for model_dir in subdirs(IMAGE_DIR):
         name_parts = model_dir.name.split("+")
@@ -148,9 +153,8 @@ def list_models() -> List[Model]:
                     continue
 
                 oneSteps = SubModelSteps(submodel=submodel, steps=int(steps))
+                oneSteps.hasImages = True
                 submodel.submodelSteps.append(oneSteps)
-
-                _load_imagesets_for_submodelsteps(model, submodel, oneSteps, steps_dir)
 
             if len(submodel.submodelSteps) == 0:
                 print(f"    * no steps directories, skipping submodel")
@@ -162,11 +166,13 @@ def list_models() -> List[Model]:
 
         res.append(model)
     
-    res = add_generatable_models(res)
-    return sort_models(res)
+    return res
 
 # .../portrait photo of alexhin/sampler=dpm++1:50,cfg=7
-def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps: SubModelSteps, steps_dir: Path):
+def load_imagesets_for_submodelsteps(oneSteps: SubModelSteps) -> List[ImageSet]:
+    steps_dir = Path(IMAGE_DIR, oneSteps.image_path())
+
+    res: List[ImageSet] = []
     for prompt_dir in subdirs(steps_dir):
         prompt = prompt_dir.name
         for sampler_cfg_dir in subdirs(prompt_dir):
@@ -184,10 +190,11 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
             if "height" in kv_pairs:
                 height = int(kv_pairs["height"])
 
-            imageset = ImageSet(model=model, submodel=submodel, submodelSteps=oneSteps,
+            imageset = ImageSet(model=oneSteps.submodel.model, submodel=oneSteps.submodel, submodelSteps=oneSteps,
                                 prompt=prompt, samplerStr=sampler, cfg=cfg,
                                 width=width, height=height)
-            oneSteps.imageSets.append(imageset)
+            # oneSteps.imageSets.append(imageset)
+            res.append(imageset)
 
             for image_path in sampler_cfg_dir.iterdir():
                 if image_path.name == ".hide":
@@ -199,6 +206,7 @@ def _load_imagesets_for_submodelsteps(model: Model, submodel: SubModel, oneSteps
 
                 image = Image(imageset, seed)
                 imageset.images.append(image)
+    return res
 
 def sort_models(models: Iterable[Model]) -> Iterable[Model]:
     for model in models:

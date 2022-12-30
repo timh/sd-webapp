@@ -52,6 +52,7 @@ class SubModelSteps(BaseModel):
     imageSets: List[ImageSet]
     submodel: SubModel
     canGenerate: bool
+    hasImages: bool
     model_path: Path
 
     def __init__(self, submodel: SubModel, steps: int, canGenerate: bool = False, model_path: Path = None):
@@ -59,6 +60,7 @@ class SubModelSteps(BaseModel):
         self.steps = steps
         self.imageSets = list()
         self.canGenerate = canGenerate
+        self.hasImages = False
         self.model_path = model_path
     
     def image_path(self) -> Path:

@@ -67,6 +67,7 @@ function toggleVisAttribute<T>(value: T, visibleSet: Set<T>, store: StoredVal<Se
 }
 
 function renderModels() {
+    const promises = new Array<Promise<void>>()
     const rootElem = document.getElementById("models")!
     for (const child of Array.from(rootElem.children)) {
         if (!child.className.includes("header")) {
@@ -136,6 +137,10 @@ function renderModels() {
                 if (!oneSteps.visible || !submodel.visible || !model.visible) {
                     stepElem.classList.add(DESELECTED)
                 }
+                else if (!oneSteps.imagesetsFetched && oneSteps.hasImages) {
+                    console.log(`loadImageSets ${oneSteps.path}`)
+                    promises.push(loadImageSets(oneSteps))
+                }
                 // console.log(`oneSteps.step = ${oneSteps.steps} oneSteps.path = ${oneSteps.path} oneSteps.imagesets.length = ${oneSteps.imagesets.length}`)
                 stepElem.onclick = function(ev) {
                     toggleVisModel(oneSteps, STORE_VIS_SUBMODEL_STEPS)
@@ -145,6 +150,24 @@ function renderModels() {
 
             rootElem.append(stepsElem)
         }
+    }
+
+
+    const numPromises = promises.length
+    if (numPromises > 0) {
+        console.log(`numPromises ${numPromises}`)
+        var promisesFulfilled = 0
+        for (const prom of promises) {
+            prom.then((_val) => {
+                promisesFulfilled ++
+                console.log(`  promisesFulfilled ${promisesFulfilled}`)
+                if (promisesFulfilled == numPromises) {
+                    console.log(`    renderImages`)
+                    renderImages(rootElem)
+                }
+            })
+        }
+        return
     }
 
     renderImages(rootElem)
@@ -268,6 +291,18 @@ function renderImages(rootElem: HTMLElement) {
         detailsElem.appendChild(createElement("div", {class: "attributes"}, image.path))
         const fullsizeElem = detailsElem.appendChild(createElement("img", {class: "fullsize"})) as HTMLImageElement
         fullsizeElem.src = imageSrc
+    }
+}
+
+async function loadImageSets(oneSteps: SubModelSteps) {
+    const path = encodeURIComponent(oneSteps.path)
+    var resp = await fetch(`/api/imagesets?path=${path}`)
+
+    const data = await resp.text()
+    if (resp.ok) {
+        const imagesetsIn = JSON.parse(data)
+        oneSteps.imagesets_from_json(imagesetsIn.imagesets)
+        oneSteps.imagesetsFetched = true
     }
 }
 
