@@ -13,7 +13,7 @@ const STORE_VIS_CFG = new StoredVal('vis_cfg', new Set<number>(), (storage) => A
 const STORE_VIS_RESOLUTION = new StoredVal('vis_resolution', new Set<string>(), (storage) => Array.from(storage), (jsonVal) => new Set(jsonVal))
 
 var allModels: Array<Model>
-var allSubmodelStepsVisible: Map<string, SubModelSteps> = new Map()
+var allSubmodelStepsVisible: Array<SubModelSteps> = new Array()
 var respectHide = true
 const urlParams = new Proxy(new URLSearchParams(window.location.search), {
     get: (searchParams, prop) => searchParams.get(prop as string),
@@ -28,13 +28,14 @@ function loadVisibility() {
     const visSubmodel = STORE_VIS_SUBMODEL.get()
     const visSubmodelSteps = STORE_VIS_SUBMODEL_STEPS.get()
 
+    allSubmodelStepsVisible = new Array()
     for (const model of allModels) {
         model.visible = visModel.has(model.path)
         for (const submodel of model.submodels) {
             submodel.visible = visSubmodel.has(submodel.path)
             for (const oneSteps of submodel.submodelSteps) {
                 oneSteps.visible = visSubmodelSteps.has(oneSteps.path)
-                allSubmodelStepsVisible.set(oneSteps.path, oneSteps)
+                allSubmodelStepsVisible.push(oneSteps)
             }
         }
     }
@@ -155,12 +156,12 @@ function renderModels() {
 
     const numPromises = promises.length
     if (numPromises > 0) {
-        console.log(`numPromises ${numPromises}`)
+        console.log(`image sets to load: ${numPromises}`)
         var promisesFulfilled = 0
         for (const prom of promises) {
             prom.then((_val) => {
                 promisesFulfilled ++
-                console.log(`  promisesFulfilled ${promisesFulfilled}`)
+                console.log(`  ${promisesFulfilled} image sets loaded`)
                 if (promisesFulfilled == numPromises) {
                     console.log(`    renderImages`)
                     renderImages(rootElem)
@@ -190,8 +191,7 @@ function renderImages(rootElem: HTMLElement) {
     const allResolutions = new Map<string, number>()
     const visibleImages = new Array<Image>()
 
-    for (const stepsPath of sort(allSubmodelStepsVisible.keys())) {
-        const oneSteps = allSubmodelStepsVisible.get(stepsPath)!
+    for (const oneSteps of allSubmodelStepsVisible) {
         const submodel = oneSteps.submodel
         const model = submodel.model
         if (paramFilterModels && !model.name.includes(paramFilterModels)) {

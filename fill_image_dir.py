@@ -117,9 +117,9 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
         if not modelName.startswith("stable"):
             if len(submodelExtras) > 1:
                 modelName = submodelExtras[0]
-                submodelExtras = set(submodelExtras[1:])
+                submodelExtras = list(submodelExtras[1:])
             else:
-                submodelExtras = set()
+                submodelExtras = list()
 
         if modelName in models:
             model = models[modelName]

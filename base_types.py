@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Iterable, Dict, Set, List
+from typing import Iterable, Dict, List
 import inspect
 
 class BaseModel:
@@ -82,10 +82,10 @@ class SubModel(BaseModel):
     batch: int
     learningRate: str
     submodelSteps: List[SubModelSteps]
-    extras: Set[str]
+    extras: List[str]
     model: Model
 
-    def __init__(self, model: Model = None, submodelStr = "", seed = 0, batch = 1, learningRate = "", extras: Set[str] = set()):
+    def __init__(self, model: Model = None, submodelStr = "", seed = 0, batch = 1, learningRate = "", extras: List[str] = list()):
         self.model = model
         self.submodelStr = submodelStr
         self.seed = seed
@@ -101,7 +101,7 @@ class SubModel(BaseModel):
         res.append(f"LR={self.learningRate}")
         if self.extras:
             # extras come at end.
-            res.append(",".join(sorted(list(self.extras))))
+            res.append(",".join(self.extras))
         return ",".join(res)
 
     def image_path(self) -> Path:

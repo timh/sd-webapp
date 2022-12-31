@@ -44,7 +44,7 @@ def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
         modelSeed = 0
         modelBatch = 1
         modelLR = ""
-        modelExtras: Set[str] = set()
+        modelExtras: List[str] = list()
 
         match = RE_DIR.match(subdir.name)
         if match:
@@ -66,7 +66,7 @@ def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
                     if part.startswith("batch"):
                         modelBatch = int(part.replace("batch", ""))
                     else:
-                        modelExtras.add(part)
+                        modelExtras.append(part)
         
         match = RE_BATCH.match(modelName)
         if match:
@@ -88,6 +88,9 @@ def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
 
         for checkpoint in subdirs(subdir):
             if not checkpoint.joinpath("model_index.json").exists():
+                continue
+            
+            if checkpoint.name.startswith("epoch-") or checkpoint.name == "last":
                 continue
         
             steps_int = int(checkpoint.name.replace("checkpoint-", "").replace("save-", ""))
@@ -125,13 +128,13 @@ def list_models_with_images() -> List[Model]:
             modelBatch = 0
             modelLR = 1.0
             modelSeed = 0
-            extras: Set[str] = set()
+            extras: List[str] = list()
 
             kv_pairs = submodel_dir.name.split(",")
             print(f"  - submodel_dir {submodel_dir.name}, kv_pairs {kv_pairs}")
             for kv_pair in kv_pairs:
                 if not "=" in kv_pair:
-                    extras.add(kv_pair)
+                    extras.append(kv_pair)
                     continue
                 key, val = kv_pair.split("=")
                 if key == "batch":
@@ -206,11 +209,13 @@ def load_imagesets_for_submodelsteps(oneSteps: SubModelSteps) -> List[ImageSet]:
 
                 image = Image(imageset, seed)
                 imageset.images.append(image)
+            imageset.images = sorted(imageset.images, key=lambda image: image.seed)
     return res
 
 def sort_models(models: Iterable[Model]) -> Iterable[Model]:
     for model in models:
-        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.batch, submodel.learningRate, submodel.seed, str(submodel.extras)])
+        model.submodels = sorted(model.submodels, key=lambda submodel: [submodel.batch, submodel.learningRate, submodel.seed, submodel.extras])
         for submodel in model.submodels:
             submodel.submodelSteps = sorted(submodel.submodelSteps, key=lambda oneSteps: oneSteps.steps)
+        
     return sorted(list(models), key=lambda model: model.name)
