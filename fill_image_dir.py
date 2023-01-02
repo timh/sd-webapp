@@ -105,7 +105,7 @@ def get_images_submodels(path: Path, models: Dict[str, Model], submodels: Dict[s
             print(f"unknown setting {setting} for subdir {subdir}")
 
         modelBase = ""
-        for base in ["f222v", "f222", "sd21", "sd20", "sd15", "inpainting", "hassanblend", "ppp"]:
+        for base in ["f222v", "f222", "sd21base", "sd21", "sd20", "sd15", "inpainting", "hassanblend", "ppp"]:
             for ch in ["-", "+"]:
                 substr = ch + base
                 if substr in modelName:

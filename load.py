@@ -52,7 +52,7 @@ def add_generatable_models(modelsWithImages: List[Model]) -> List[Model]:
             modelSeed = int(match.group(3))
             modelLR = match.group(2)
 
-        for base in ["f222v", "sd15", "sd21", "hassanblend", "ppp"]:
+        for base in ["f222v", "sd15", "sd21base", "sd21", "hassanblend", "ppp"]:
             substr = "-" + base
             if substr in modelName:
                 modelName = modelName.replace(substr, "")
@@ -210,6 +210,8 @@ def load_imagesets_for_submodelsteps(oneSteps: SubModelSteps) -> List[ImageSet]:
                 image = Image(imageset, seed)
                 imageset.images.append(image)
             imageset.images = sorted(imageset.images, key=lambda image: image.seed)
+
+    res = sorted(res, key=lambda imageset: [imageset.prompt, imageset.samplerStr, imageset.cfg, imageset.width, imageset.height])
     return res
 
 def sort_models(models: Iterable[Model]) -> Iterable[Model]:
