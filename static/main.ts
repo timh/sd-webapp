@@ -69,12 +69,9 @@ function toggleVisAttribute<T>(value: T, visibleSet: Set<T>, store: StoredVal<Se
 
 function renderModels() {
     const promises = new Array<Promise<void>>()
-    const rootElem = document.getElementById("models")!
-    for (const child of Array.from(rootElem.children)) {
-        if (!child.className.includes("header")) {
-            rootElem.removeChild(child)
-        }
-    }
+
+    const addElements = new Array<HTMLElement>()
+
 
     for (const [modelIdx, model] of allModels.entries()) {
         if (paramFilterModels && !model.name.includes(paramFilterModels)) {
@@ -87,7 +84,8 @@ function renderModels() {
         const modelClass = `model_${modelIdx}`
         for (const field of MODEL_FIELDS) {
             const value = model[field].toString() + ((field == "name" && model.canGenerate) ? "*" : "")
-            const fieldElem = rootElem.appendChild(createElement("span", {class: field}, value))
+            const fieldElem = createElement("span", {class: field}, value)
+            addElements.push(fieldElem)
             if (!model.visible) {
                 fieldElem.classList.add(DESELECTED)
             }
@@ -121,7 +119,7 @@ function renderModels() {
                 if (!submodel.visible || !model.visible) {
                     elem.classList.add(DESELECTED)
                 }
-                rootElem.appendChild(elem)
+                addElements.push(elem)
                 elem.onclick = function(ev) {
                     toggleVisModel(submodel, STORE_VIS_SUBMODEL)
                     return false
@@ -149,29 +147,41 @@ function renderModels() {
                 }
             }
 
-            rootElem.append(stepsElem)
+            addElements.push(stepsElem)
         }
     }
 
+    const rootElem = document.getElementById("models")!
+    const finish = function() {
+        for (const child of Array.from(rootElem.children)) {
+            if (!child.className.includes("header")) {
+                rootElem.removeChild(child)
+            }
+        }
+        for (const child of addElements) {
+            rootElem.appendChild(child)
+        }
+        renderImages(rootElem)
+    }
 
     const numPromises = promises.length
-    if (numPromises > 0) {
-        console.log(`image sets to load: ${numPromises}`)
-        var promisesFulfilled = 0
-        for (const prom of promises) {
-            prom.then((_val) => {
-                promisesFulfilled ++
-                console.log(`  ${promisesFulfilled} image sets loaded`)
-                if (promisesFulfilled == numPromises) {
-                    console.log(`    renderImages`)
-                    renderImages(rootElem)
-                }
-            })
-        }
+    if (numPromises == 0) {
+        finish()
         return
     }
 
-    renderImages(rootElem)
+    console.log(`image sets to load: ${numPromises}`)
+    var promisesFulfilled = 0
+    for (const prom of promises) {
+        prom.then((_val) => {
+            promisesFulfilled ++
+            console.log(`  ${promisesFulfilled} image sets loaded`)
+            if (promisesFulfilled == numPromises) {
+                console.log(`    renderImages`)
+                finish()
+            }
+        })
+    }
 }
 
 function renderImages(rootElem: HTMLElement) {
